@@ -221,54 +221,98 @@ class AllocationPlots:
     
     def _add_allocation_summary(self, fig: go.Figure, allocation_data: Dict[str, pd.Series], 
                                row: int, col: int) -> None:
-        """Add summary annotation with key allocation metrics."""
+        """Add ending value annotations for allocation components at their actual y-axis positions."""
         # Get latest values
         latest_original_cash = allocation_data['original_cash'].iloc[-1]
         latest_short_proceeds = allocation_data['short_proceeds'].iloc[-1]
         latest_total_cash = latest_original_cash + latest_short_proceeds
         latest_long = allocation_data['long_positions'].iloc[-1]
-        latest_short = abs(allocation_data['short_positions'].iloc[-1]) if not allocation_data['short_positions'].eq(0).all() else 0
-        latest_margin_debt = abs(allocation_data['margin_cash'].iloc[-1]) if allocation_data['margin_cash'].iloc[-1] < 0 else 0
+        latest_short = allocation_data['short_positions'].iloc[-1]  # Keep negative
+        latest_margin_debt = allocation_data['margin_cash'].iloc[-1]  # Keep negative
         
-        total_assets = latest_total_cash + latest_long + latest_margin_debt
-        total_exposure = latest_long + latest_short
+        # Calculate y-positions for each component
+        # These match how the traces are stacked in _add_allocation_traces
+        y_positions = {}
         
-        # Calculate key ratios
-        cash_pct = (latest_total_cash / total_assets * 100) if total_assets > 0 else 0
-        leverage_ratio = (total_exposure / (total_assets - latest_margin_debt)) if (total_assets - latest_margin_debt) > 0 else 0
+        # Margin debt (if negative)
+        if latest_margin_debt < 0:
+            y_positions['Margin'] = latest_margin_debt
         
-        # Build summary annotation text
-        annotation_text = f"Total Cash: {cash_pct:.1f}%<br>"
+        # Short positions (stacked below margin if exists)
+        if latest_short < 0:
+            base = latest_margin_debt if latest_margin_debt < 0 else 0
+            y_positions['Short'] = base + latest_short
+        
+        # Original cash (starts at 0)
+        if latest_original_cash > 0:
+            y_positions['Cash'] = latest_original_cash
+        
+        # Short proceeds (stacked on original cash)
         if latest_short_proceeds > 0:
-            proceeds_pct = (latest_short_proceeds / total_assets * 100) if total_assets > 0 else 0
-            annotation_text += f"├─ Short Proceeds: {proceeds_pct:.1f}%<br>"
+            y_positions['Proceeds'] = latest_original_cash + latest_short_proceeds
+        
+        # Long positions (stacked on total cash)
         if latest_long > 0:
-            long_pct = (latest_long / total_assets * 100) if total_assets > 0 else 0
-            annotation_text += f"Long: {long_pct:.1f}%<br>"
-        if latest_short > 0:
-            short_pct = (latest_short / total_assets * 100) if total_assets > 0 else 0
-            annotation_text += f"Short: {short_pct:.1f}%<br>"
-        if latest_margin_debt > 0:
-            margin_pct = (latest_margin_debt / total_assets * 100) if total_assets > 0 else 0
-            annotation_text += f"Margin Cash (Debt): {margin_pct:.1f}%<br>"
-        annotation_text += f"Leverage: {leverage_ratio:.2f}x"
+            y_positions['Long'] = latest_total_cash + latest_long
         
-        # Calculate correct axis reference for subplot
-        axis_num = row if row > 1 else ""
-        xref = f"x{axis_num} domain" if axis_num else "x domain"
-        yref = f"y{axis_num} domain" if axis_num else "y domain"
+        # Add y-axis annotations using the same style as other panels
+        self._add_ending_value_annotations(fig, row, col, y_positions)
+    
+    def _add_ending_value_annotations(self, fig: go.Figure, row: int, col: int, values: dict):
+        """
+        Add ending value annotations at the actual value positions on y-axis.
         
-        fig.add_annotation(
-            x=0.02,
-            y=0.98,
-            xref=xref,
-            yref=yref,
-            text=annotation_text,
-            showarrow=False,
-            font=dict(family="Arial", size=11, color="white"),
-            align="left",
-            bgcolor="rgba(50, 50, 50, 0.8)",
-            bordercolor="#999999",
-            borderwidth=1,
-            borderpad=4
-        )
+        Args:
+            fig: Plotly figure to add annotations to
+            row: Row index for the subplot
+            col: Column index for the subplot
+            values: Dictionary with label: value pairs
+        """
+        # Generate correct xref and yref for subplot
+        if row == 1:
+            xref = "x domain"
+            yref = "y"
+        else:
+            xref = f"x{row} domain"
+            yref = f"y{row}"
+        
+        # Define colors for each component
+        colors = {
+            'Cash': self.styler.COLORS['cash'],
+            'Proceeds': self.styler.COLORS['short_proceeds'],
+            'Long': self.styler.COLORS['long_pos'],
+            'Short': self.styler.COLORS['short_pos'],
+            'Margin': self.styler.COLORS['margin']
+        }
+        
+        # Sort values by magnitude for better positioning
+        sorted_values = sorted(values.items(), key=lambda x: abs(x[1]), reverse=True)
+        
+        for i, (label, value) in enumerate(sorted_values):
+            # Get color for this component
+            color = colors.get(label, '#FFFFFF')
+            
+            # Format value as currency
+            if abs(value) >= 1000000:
+                formatted_value = f"${value/1000000:.1f}M"
+            elif abs(value) >= 1000:
+                formatted_value = f"${value/1000:.0f}K"
+            else:
+                formatted_value = f"${value:.0f}"
+            
+            # Add annotation on the right side at actual value position
+            fig.add_annotation(
+                x=1.002,  # Just outside the plot area
+                y=value,  # Actual value position
+                xref=xref,
+                yref=yref,
+                text=formatted_value,
+                showarrow=False,
+                font=dict(color=color, size=9, family="Arial"),  # Match other panels
+                bgcolor="rgba(0, 0, 0, 0.7)",
+                bordercolor=color,
+                borderwidth=1,
+                borderpad=2,
+                xanchor="left",
+                yanchor="middle"
+            )
