@@ -100,7 +100,7 @@ class Plotter:
         self._style_subplot_titles(fig)
         
         # Add chart content
-        self._build_price_panel(fig, row=1)
+        self._build_price_panel(fig, row=1, log_scale=log_scale)
         self._build_performance_panel(fig, row=2)
         self._build_drawdown_panel(fig, row=3)
         self._build_indicators_panel(fig, row=4)
@@ -115,10 +115,10 @@ class Plotter:
         self.fig = fig
         return fig
     
-    def _build_price_panel(self, fig: go.Figure, row: int) -> None:
+    def _build_price_panel(self, fig: go.Figure, row: int, log_scale: bool = False) -> None:
         """Build the price panel with candlesticks, signals, and overlays."""
         # Add core price data
-        self.chart_elements.add_candlestick(fig, row=row, col=1)
+        self.chart_elements.add_candlestick(fig, row=row, col=1, log_scale=log_scale)
         
         # Add trade signals
         self.chart_elements.add_trade_signals(fig, row=row, col=1)
@@ -284,6 +284,46 @@ class Plotter:
         if self.fig is None:
             raise ValueError("No figure has been created yet. Call a plotting method first.")
         self.fig.show()
+    
+    def open_in_browser(self, filename: str) -> None:
+        """
+        Open the saved HTML file directly in the default browser.
+        
+        Args:
+            filename: Path to the HTML file to open
+        """
+        import os
+        import webbrowser
+        import platform
+        
+        # Ensure the file exists
+        if not os.path.exists(filename):
+            raise FileNotFoundError(f"HTML file not found: {filename}")
+        
+        # Get the absolute path
+        abs_path = os.path.abspath(filename)
+        
+        # Use file:// protocol for local files
+        if platform.system() == 'Windows':
+            # Windows requires three slashes after file:
+            file_url = f"file:///{abs_path.replace(os.sep, '/')}"
+        else:
+            # Unix-like systems
+            file_url = f"file://{abs_path}"
+        
+        # Open in the default browser
+        try:
+            webbrowser.open(file_url, new=2)  # new=2 opens in a new tab
+            print(f"Opened {filename} in browser")
+        except Exception as e:
+            print(f"Failed to open browser: {e}")
+            # Fallback: use OS-specific command
+            if platform.system() == 'Windows':
+                os.startfile(abs_path)
+            elif platform.system() == 'Darwin':  # macOS
+                os.system(f'open "{abs_path}"')
+            else:  # Linux
+                os.system(f'xdg-open "{abs_path}"')
     
     def save(self, filename: str) -> None:
         """

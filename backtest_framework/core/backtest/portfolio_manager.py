@@ -186,24 +186,29 @@ class PortfolioManager:
         if self.position <= 0:
             return 0.0
         
-        # Calculate sale proceeds
-        sale_proceeds = self.position * execution_price
+        # Calculate gross sale proceeds
+        gross_proceeds = self.position * execution_price
         
-        # Pay back margin debt first
+        # Calculate entry cost (what we paid for the position)
+        entry_cost = self.position * self.entry_price
+        
+        # Simple P&L calculation: proceeds - cost
+        pnl = gross_proceeds - entry_cost
+        
+        # Update cash and margin
         if self.margin_cash < 0:
-            margin_to_repay = min(-self.margin_cash, sale_proceeds)
+            # Pay back margin debt first
+            margin_to_repay = min(-self.margin_cash, gross_proceeds)
             self.margin_cash += margin_to_repay
-            sale_proceeds -= margin_to_repay
+            remaining_proceeds = gross_proceeds - margin_to_repay
+            self.original_cash += remaining_proceeds
+        else:
+            # No margin debt, add all proceeds to cash
+            self.original_cash += gross_proceeds
         
-        # Add remaining to original cash
-        self.original_cash += sale_proceeds
         self.cash = self.original_cash + self.short_proceeds
-        
-        # Calculate P&L
-        total_cost = self.position * self.entry_price
-        pnl = sale_proceeds - (total_cost - abs(min(self.margin_cash, 0)))
-        
         self.position = 0.0
+        
         return pnl
     
     def _close_short_position(self, execution_price: float) -> float:

@@ -22,7 +22,7 @@ class ChartElements:
         self.results = results if results is not None else data
         self.styler = ChartStyler()
     
-    def add_candlestick(self, fig: go.Figure, row: int = 1, col: int = 1, add_ending_values: bool = True) -> go.Figure:
+    def add_candlestick(self, fig: go.Figure, row: int = 1, col: int = 1, add_ending_values: bool = True, log_scale: bool = False) -> go.Figure:
         """
         Add price candlesticks to the specified subplot.
         
@@ -50,8 +50,8 @@ class ChartElements:
         # Add ending value annotation for closing price
         if add_ending_values:
             final_close = self.data['Close'].iloc[-1]
-            # Try adding as a visible scatter trace instead of annotation
-            self._add_price_as_trace(fig, row, col, final_close)
+            # Use the same annotation approach as KDJ/Performance/Drawdown panels
+            self._add_ending_value_annotations(fig, row, col, {'Price': final_close}, is_log_scale=log_scale)
         
         return fig
     
@@ -335,109 +335,9 @@ class ChartElements:
         
         return actual_entry_prices
     
-    def _add_price_ending_annotation(self, fig: go.Figure, row: int, col: int, price: float):
-        """
-        Add ending price value annotation at the actual price level.
-        
-        Args:
-            fig: Plotly figure to add annotation to
-            row: Row index for the subplot
-            col: Column index for the subplot
-            price: Final closing price to display
-        """
-        # Format price based on magnitude
-        if price >= 1000:
-            formatted_price = f"${price:,.0f}"
-        elif price >= 100:
-            formatted_price = f"${price:.2f}"
-        else:
-            formatted_price = f"${price:.3f}"
-        
-        # Use annotation positioned at the actual price level
-        # This is the approach that was working before
-        fig.add_annotation(
-            x=1.01,  # Just outside the plot area
-            y=price,  # Actual price value
-            xref="x domain" if row == 1 else f"x{row} domain",
-            yref="y" if row == 1 else f"y{row}",
-            text=formatted_price,
-            showarrow=False,
-            font=dict(color="#FFFFFF", size=11, family="Arial", weight="bold"),
-            bgcolor="rgba(0, 0, 0, 0.8)",
-            bordercolor="#FFFFFF",
-            borderwidth=1,
-            borderpad=3,
-            xanchor="left",
-            yanchor="middle"
-        )
-        
-        print(f"Added price annotation: {formatted_price} at y={price:.2f}")
+
     
-    def _add_price_as_trace(self, fig: go.Figure, row: int, col: int, price: float):
-        """
-        Add price as a scatter trace positioned within visible chart area.
-        
-        Args:
-            fig: Plotly figure to add trace to
-            row: Row index for the subplot
-            col: Column index for the subplot
-            price: Final closing price to display
-        """
-        # Format price
-        if price >= 1000:
-            formatted_price = f"${price:,.0f}"
-        elif price >= 100:
-            formatted_price = f"${price:.2f}"
-        else:
-            formatted_price = f"${price:.3f}"
-        
-        # Position the text within the visible chart area
-        # Get the date range and position text at ~95% of the way across
-        date_range = self.data.index[-1] - self.data.index[0]
-        position_date = self.data.index[-1] - (date_range * 0.05)  # 5% from the right edge
-        
-        # Add as scatter trace with text positioned inside chart
-        fig.add_trace(
-            go.Scatter(
-                x=[position_date],
-                y=[price],
-                mode='text',  # Only text, no marker
-                text=[formatted_price],
-                textposition='middle center',
-                textfont=dict(
-                    color='#FFFFFF',
-                    size=12,
-                    family='Arial',
-                    weight='bold'
-                ),
-                name='Price Label',
-                showlegend=False,
-                hoverinfo='skip'
-            ),
-            row=row, col=col
-        )
-        
-        # Also add a subtle line from the text to the actual price level at the end
-        fig.add_trace(
-            go.Scatter(
-                x=[position_date, self.data.index[-1]],
-                y=[price, price],
-                mode='lines',
-                line=dict(
-                    color='#FFFFFF',
-                    width=1,
-                    dash='dot'
-                ),
-                name='Price Level',
-                showlegend=False,
-                hoverinfo='skip'
-            ),
-            row=row, col=col
-        )
-        
-        print(f"Added price label: {formatted_price} at y={price:.2f} positioned at {position_date}")
-    
-    def _add_ending_value_annotations(self, fig: go.Figure, row: int, col: int, values: dict):
+    def _add_ending_value_annotations(self, fig: go.Figure, row: int, col: int, values: dict, is_log_scale: bool = False):
         """
         Add ending value annotations at the actual value positions.
         
@@ -482,21 +382,44 @@ class ChartElements:
             # Apply small vertical offset if values are too close
             y_offset = i * 2 if len(sorted_values) > 1 and abs(sorted_values[0][1] - sorted_values[-1][1]) < 10 else 0
             
-            print(f"Adding price annotation: {formatted_value} at y={value + y_offset}, xref={xref}, yref={yref}")
+            print(f"Adding price annotation: {formatted_value} at y={value + y_offset}, xref={xref}, yref={yref}, log_scale={is_log_scale}")
             
-            # Add annotation on the right side at actual value position
-            fig.add_annotation(
-                x=1.002,  # Just outside the plot area
-                y=value + y_offset,  # Actual value position with offset if needed
-                xref=xref,
-                yref=yref,
-                text=formatted_value,
-                showarrow=False,
-                font=dict(color=color, size=12, family="Arial", weight="bold"),
-                bgcolor="rgba(0, 0, 0, 0.8)",
-                bordercolor=color,
-                borderwidth=1,
-                borderpad=3,
-                xanchor="left",
-                yanchor="middle"
-            )
+            # For log scale on price panel, we need special handling
+            if is_log_scale and row == 1 and 'Price' in label:
+                # For log scale, add the annotation as a scatter trace instead
+                # This allows Plotly to handle the log transformation automatically
+                fig.add_trace(
+                    go.Scatter(
+                        x=[self.data.index[-1]],
+                        y=[value],
+                        mode='text',
+                        text=[formatted_value],
+                        textposition='middle right',
+                        textfont=dict(
+                            color=color,
+                            size=9,
+                            family='Arial'
+                        ),
+                        showlegend=False,
+                        hoverinfo='skip'
+                    ),
+                    row=row, col=col
+                )
+            else:
+                # For linear scale or other panels, use regular annotation
+                # Add annotation on the right side at actual value position
+                fig.add_annotation(
+                    x=1.002,  # Just outside the plot area
+                    y=value + y_offset,  # Actual value position with offset if needed
+                    xref=xref,
+                    yref=yref,
+                    text=formatted_value,
+                    showarrow=False,
+                    font=dict(color=color, size=9, family="Arial"),  # Match KDJ size
+                    bgcolor="rgba(0, 0, 0, 0.7)",
+                    bordercolor=color,
+                    borderwidth=1,
+                    borderpad=2,
+                    xanchor="left",
+                    yanchor="middle"
+                )

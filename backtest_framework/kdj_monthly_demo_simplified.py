@@ -183,15 +183,15 @@ def main():
         os.makedirs(output_dir, exist_ok=True)
         
         # Create plotter with the data and results
-        # Note: results contains both original data and computed indicators
-        plotter = Plotter(data=results, results=results, engine=engine)
+        # Note: Pass original data for OHLC columns and results for strategy data
+        plotter = Plotter(data=data, results=results, engine=engine)
         
         # Create comprehensive chart using the new component-based system
         print("Creating comprehensive strategy analysis chart...")
         fig = plotter.create_comprehensive_chart(
             ticker=ticker, 
             base_strategy_name="Monthly KDJ", 
-            log_scale=True
+            log_scale=False
         )
         
         # Save chart
@@ -199,8 +199,8 @@ def main():
         plotter.save(output_file)
         print(f"Chart saved to: {output_file}")
         
-        # Optional: Display chart in browser
-        # plotter.show()
+        # Open chart in browser
+        plotter.open_in_browser(output_file)
         
     except Exception as e:
         print(f"\nError: {str(e)}")

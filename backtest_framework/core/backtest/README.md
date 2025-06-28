@@ -4,7 +4,7 @@ The backtest engine has been refactored into a modular architecture for better m
 
 ## Architecture Overview
 
-The engine is now composed of several specialized modules, each handling a specific aspect of backtesting:
+The engine is composed of several specialized modules, each handling a specific aspect of backtesting:
 
 ### Core Components
 
@@ -12,8 +12,10 @@ The engine is now composed of several specialized modules, each handling a speci
 2. **PortfolioManager** (`portfolio_manager.py`) - Position and cash management
 3. **CostCalculator** (`cost_calculator.py`) - Trading costs and fees
 4. **TradeExecutor** (`trade_executor.py`) - Signal execution and trade management
-5. **PerformanceCalculator** (`performance_calculator.py`) - Metrics and analysis
-6. **DataValidator** (`data_validator.py`) - Data validation and preparation
+5. **TradeTracker** (`trade_tracker.py`) - Individual trade tracking and P&L calculation
+6. **PerformanceCalculator** (`performance_calculator.py`) - Metrics and analysis
+7. **DataValidator** (`data_validator.py`) - Data validation and preparation
+8. **RiskManagement** (`risk_management.py`) - Risk management strategies
 
 ## Module Responsibilities
 
@@ -28,11 +30,12 @@ The engine is now composed of several specialized modules, each handling a speci
 ### PortfolioManager
 - **Purpose**: Manages portfolio state including positions, cash, and margin
 - **Key Features**:
-  - Position sizing with leverage support
+  - Position sizing with leverage support (separate long/short leverage)
   - Margin debt tracking
   - Long/short position management
   - Dividend processing
-  - Equity calculations
+  - MMF interest on cash balances
+  - Accurate P&L calculation
 
 ### CostCalculator
 - **Purpose**: Calculates all trading-related costs
@@ -40,22 +43,35 @@ The engine is now composed of several specialized modules, each handling a speci
   - Commission and slippage calculations
   - Margin interest (with Federal Funds Rate integration)
   - Short borrowing costs
+  - MMF (Money Market Fund) interest rates
   - Execution price calculations
 
 ### TradeExecutor
 - **Purpose**: Handles trade execution logic and signal processing
 - **Key Features**:
   - T+1 signal execution
-  - Buy/sell signal processing
-  - Trade statistics tracking
-  - Daily cost application
+  - Buy/sell signal processing with current date tracking
+  - Integration with TradeTracker for accurate P&L
+  - Daily cost and dividend application
+  - Trade statistics with enhanced metrics
+
+### TradeTracker
+- **Purpose**: Tracks individual trades from entry to exit with accurate P&L calculation
+- **Key Features**:
+  - Individual trade lifecycle tracking
+  - Separate P&L calculation for long and short trades
+  - Dividend and borrowing cost attribution
+  - Win rate calculation based on actual P&L
+  - Comprehensive trade statistics (avg win/loss, profit factor, etc.)
+  - Trade log generation for analysis
 
 ### PerformanceCalculator
 - **Purpose**: Calculates comprehensive performance metrics
 - **Key Features**:
   - Return and drawdown calculations
   - Risk metrics (Sharpe, Sortino ratios)
-  - Benchmark comparison
+  - Benchmark comparison with dividend reinvestment
+  - CAGR and other time-based metrics
   - Summary statistics generation
 
 ### DataValidator
@@ -67,191 +83,150 @@ The engine is now composed of several specialized modules, each handling a speci
   - Dividend data preparation
   - Multi-ticker alignment checks
 
-## Benefits of Modular Architecture
+### RiskManagement
+- **Purpose**: Provides risk management strategies
+- **Implementations**:
+  - `DrawdownProtection`: Exit positions when drawdown exceeds threshold
+  - `TrailingStop`: Trailing stop loss implementation
 
-### 1. **Maintainability**
-- Each module has a single responsibility
-- Easy to locate and fix bugs
-- Clear separation of concerns
-- Smaller, more focused code files
+## Enhanced Trade Tracking System
 
-### 2. **Testability**
-- Each module can be unit tested independently
-- Mock dependencies for isolated testing
-- Better test coverage and reliability
+The new trade tracking system provides accurate win rate calculation by:
 
-### 3. **Extensibility**
-- Easy to add new features to specific modules
-- Replace individual components without affecting others
-- Support for different portfolio management strategies
-- Pluggable risk management systems
+1. **Trade Lifecycle**: Tracks each trade from entry to exit
+2. **P&L Components**: 
+   - Entry/exit prices with commission and slippage
+   - Dividends received (long) or paid (short)
+   - Borrowing costs (margin interest or short borrow costs)
+3. **Win Rate**: Based on actual P&L including all costs and dividends
 
-### 4. **Reusability**
-- Components can be used independently
-- Share modules across different backtesting systems
-- Build specialized engines for specific use cases
+### Trade P&L Calculation
+
+**Long Trades:**
+```
+P&L = Exit Proceeds - Entry Cost + Dividends - Borrowing Costs
+```
+
+**Short Trades:**
+```
+P&L = Entry Proceeds - Exit Cost - Dividends - Borrowing Costs
+```
 
 ## Usage Examples
 
-### Basic Usage (Same as Before)
+### Basic Usage
 ```python
 from backtest_framework.core.backtest import BacktestEngine
-from backtest_framework.core.strategies.kdj_cross import KDJCrossStrategy
+from backtest_framework.core.strategies.kdj_cross import GoldenDeadCrossStrategyMonthly
 
-# Create engine with same interface as before
+# Create engine
 engine = BacktestEngine(
     initial_capital=10000,
     commission=0.001,
-    leverage=2.0,
-    enable_short_selling=True
+    leverage={"long": 2.0, "short": 3.0},  # Separate leverage
+    enable_short_selling=True,
+    include_dividends=True
 )
 
-# Run backtest (unchanged interface)
-strategy = KDJCrossStrategy()
+# Run backtest
+strategy = GoldenDeadCrossStrategyMonthly()
 results = engine.run(strategy, data)
+
+# Get trade statistics
+trade_stats = engine.trade_executor.get_trade_stats()
+print(f"Win Rate: {trade_stats['win_rate'] * 100:.2f}%")
+print(f"Profit Factor: {trade_stats['profit_factor']:.2f}")
+
+# Get detailed trade log
+trade_log = engine.trade_executor.get_trade_log()
+trade_log.to_csv("trade_log.csv")
 ```
 
-### Advanced Usage - Custom Components
+### Accessing Components
 ```python
-from backtest_framework.core.backtest import (
-    BacktestEngine, PortfolioManager, CostCalculator
-)
-
-# Create custom portfolio manager with different settings
-custom_portfolio = PortfolioManager(
-    initial_capital=50000,
-    position_sizing=0.25,  # Use 25% of capital per trade
-    long_leverage=3.0,
-    short_leverage=1.5
-)
-
-# Create custom cost calculator
-custom_costs = CostCalculator(
-    commission=0.0005,  # Lower commission
-    slippage=0.001,
-    short_borrow_rate=0.03  # Higher borrow rate
-)
-
-# Engine will use custom components
-engine = BacktestEngine()
-engine.portfolio_manager = custom_portfolio
-engine.cost_calculator = custom_costs
-```
-
-### Accessing Individual Components
-```python
-# Access components for analysis or customization
-engine = BacktestEngine()
-
-# Get performance calculator for custom metrics
-perf_calc = engine.performance_calculator
-summary = perf_calc.get_summary_stats(results)
-
-# Access portfolio state during backtest
+# Access portfolio state
 portfolio = engine.portfolio_manager
-current_position = portfolio.position
-cash_balance = portfolio.cash
+print(f"Current Position: {portfolio.position}")
+print(f"Cash Balance: ${portfolio.cash:,.2f}")
+print(f"Margin Debt: ${portfolio.margin_cash:,.2f}")
 
-# Customize cost calculations
-cost_calc = engine.cost_calculator
-execution_price = cost_calc.calculate_execution_price(100.0, is_buy=True)
+# Access trade tracker
+tracker = engine.trade_executor.trade_tracker
+print(f"Open Trade: {tracker.current_trade is not None}")
+
+# Get comprehensive trade stats
+stats = tracker.get_stats()
+print(f"Average Win: ${stats['avg_win']:,.2f}")
+print(f"Average Loss: ${stats['avg_loss']:,.2f}")
 ```
-
-## Migration from Original Engine
-
-The modular engine maintains **full backward compatibility** with the original interface:
-
-- All original `BacktestEngine` constructor parameters work unchanged
-- The `run()` method has the same signature and returns the same format
-- All result columns and metrics are preserved
-- Risk managers work the same way
-
-No changes required to existing code that uses the engine!
 
 ## File Structure
 
 ```
 backtest/
 ├── __init__.py                 # Module exports
-├── engine.py                   # Main BacktestEngine (NEW)
-├── engine_orig.py              # Original engine (backup)
-├── portfolio_manager.py        # Portfolio state management (NEW)
-├── cost_calculator.py          # Cost calculations (NEW)
-├── trade_executor.py           # Trade execution logic (NEW)
-├── performance_calculator.py   # Performance metrics (NEW)
-├── data_validator.py           # Data validation (NEW)
-└── risk_management.py          # Risk management (unchanged)
+├── engine.py                   # Main BacktestEngine
+├── portfolio_manager.py        # Portfolio state management
+├── cost_calculator.py          # Cost calculations
+├── trade_executor.py           # Trade execution with enhanced tracking
+├── trade_tracker.py            # Individual trade tracking
+├── performance_calculator.py   # Performance metrics
+├── data_validator.py           # Data validation
+├── risk_management.py          # Risk management strategies
+└── README.md                   # This documentation
 ```
 
-## Future Enhancements
+## Key Features
 
-The modular architecture enables easy addition of:
+### 1. **Accurate Win Rate Calculation**
+- Tracks each trade from entry to exit
+- Includes all costs (commission, slippage, borrowing)
+- Accounts for dividends received/paid
+- Differentiates between long and short trade P&L
 
-1. **Alternative Portfolio Managers**
-   - Kelly criterion position sizing
-   - Risk parity allocation
-   - Mean reversion strategies
+### 2. **Comprehensive Cost Tracking**
+- Margin interest based on Federal Funds Rate
+- Short borrowing costs
+- MMF interest on cash balances
+- Commission and slippage on every trade
 
-2. **Enhanced Cost Models**
-   - Dynamic commission structures
-   - Market impact models
-   - Real-time borrowing rates
+### 3. **Flexible Leverage**
+- Separate leverage for long and short positions
+- Automatic margin debt tracking
+- Interest charges on borrowed funds
 
-3. **Advanced Execution Models**
-   - Market orders vs limit orders
-   - Partial fill simulation
-   - Latency modeling
+### 4. **Enhanced Metrics**
+- Win rate based on actual P&L
+- Average win/loss amounts
+- Profit factor
+- Best/worst trade tracking
+- Trade duration analysis
 
-4. **Sophisticated Performance Analysis**
-   - Factor attribution
-   - Rolling performance metrics
-   - Regime analysis
+## Migration Notes
 
-5. **Alternative Data Validators**
-   - Real-time data validation
-   - Corporate action adjustments
-   - Alternative data sources
+The engine maintains full backward compatibility while adding new features:
 
-## Testing Strategy
-
-Each module can be tested independently:
-
-```python
-# Example: Test PortfolioManager in isolation
-import unittest
-from backtest.portfolio_manager import PortfolioManager
-
-class TestPortfolioManager(unittest.TestCase):
-    def setUp(self):
-        self.pm = PortfolioManager(10000, position_sizing=0.5)
-    
-    def test_long_position_entry(self):
-        success = self.pm.enter_long_position(100.0)
-        self.assertTrue(success)
-        self.assertGreater(self.pm.position, 0)
-    
-    def test_equity_calculation(self):
-        self.pm.enter_long_position(100.0)
-        equity = self.pm.get_current_equity(105.0)
-        self.assertGreater(equity, self.pm.initial_capital)
-```
+- All original parameters work unchanged
+- New optional parameters for enhanced functionality
+- Results DataFrame includes all original columns
+- Additional metrics available through trade_executor
 
 ## Performance Considerations
 
 The modular architecture maintains performance through:
 
-- **Minimal overhead**: Module boundaries don't add computational cost
-- **Efficient state management**: Single-pass execution with state updates
-- **Vectorized calculations**: Performance metrics use pandas vectorization
-- **Memory efficiency**: Same memory footprint as original engine
+- **Efficient state management**: Single-pass execution
+- **Minimal overhead**: Clean module boundaries
+- **Vectorized calculations**: Using pandas operations
+- **Memory efficiency**: Same footprint as original
 
 ## Conclusion
 
-The modular backtest engine provides:
-- ✅ **Same functionality** as the original engine
-- ✅ **Better maintainability** through separation of concerns
-- ✅ **Enhanced testability** with isolated components
-- ✅ **Greater extensibility** for future enhancements
+The consolidated backtest engine provides:
+- ✅ **Accurate win rate** calculation with full P&L tracking
+- ✅ **Clean architecture** with consolidated modules
+- ✅ **Enhanced metrics** for better strategy analysis
 - ✅ **Full backward compatibility** with existing code
+- ✅ **Comprehensive trade logging** for detailed analysis
 
-The refactoring improves code quality while preserving all existing functionality and performance characteristics.
+The system now properly tracks every aspect of trading performance, from individual trades to portfolio-wide metrics.

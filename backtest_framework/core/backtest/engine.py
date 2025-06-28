@@ -219,11 +219,11 @@ class BacktestEngine:
             
             # Execute T+1 buy signals
             if results['buy_signal_t1'].iloc[i] == 1:
-                self.trade_executor.execute_buy_signal(current_price, execution_price)
+                self.trade_executor.execute_buy_signal(current_price, execution_price, current_date)
             
             # Execute T+1 sell signals
             elif results['sell_signal_t1'].iloc[i] == 1:
-                self.trade_executor.execute_sell_signal(current_price, execution_price)
+                self.trade_executor.execute_sell_signal(current_price, execution_price, current_date)
             
             # Check if strategy becomes active AFTER processing signals
             # This ensures costs start applying the day after first signal
@@ -339,6 +339,7 @@ class BacktestEngine:
         results['trade_count'] = 0
         results['win_count'] = 0
         results['loss_count'] = 0
+        results['win_rate'] = 0.0
         results['position_type'] = ''
         results['dividends_received'] = 0.0
         results['cumulative_dividends'] = 0.0
@@ -378,6 +379,7 @@ class BacktestEngine:
         results.at[current_date, 'trade_count'] = trade_stats['trade_count']
         results.at[current_date, 'win_count'] = trade_stats['win_count']
         results.at[current_date, 'loss_count'] = trade_stats['loss_count']
+        results.at[current_date, 'win_rate'] = trade_stats.get('win_rate', 0.0)
         results.at[current_date, 'position_type'] = self.portfolio_manager.position_type
         results.at[current_date, 'dividends_received'] = daily_costs['dividend_impact']
         results.at[current_date, 'cumulative_dividends'] = trade_stats['cumulative_dividends']

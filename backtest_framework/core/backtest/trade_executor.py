@@ -6,6 +6,7 @@ import numpy as np
 from typing import Dict, Any, Tuple
 from .portfolio_manager import PortfolioManager
 from .cost_calculator import CostCalculator
+from .trade_tracker import TradeTracker
 
 
 class TradeExecutor:
@@ -27,7 +28,8 @@ class TradeExecutor:
         self.cost_calculator = cost_calculator
         self.enable_short_selling = enable_short_selling
         
-        # Trade tracking
+        # Trade tracking - use enhanced tracker
+        self.trade_tracker = TradeTracker()
         self.trade_count = 0
         self.win_count = 0
         self.loss_count = 0
@@ -58,7 +60,7 @@ class TradeExecutor:
         
         return data
     
-    def execute_buy_signal(self, current_price: float, execution_price: float) -> Dict[str, Any]:
+    def execute_buy_signal(self, current_price: float, execution_price: float, current_date: pd.Timestamp = None) -> Dict[str, Any]:
         """
         Execute buy signal.
         
@@ -80,24 +82,56 @@ class TradeExecutor:
         
         # Close short position first if exists
         if self.portfolio_manager.position < 0:
+            # Calculate exit cost for the short position
+            shares_to_cover = abs(self.portfolio_manager.position)
+            cover_cost = shares_to_cover * effective_price
+            
+            # Record trade completion if using enhanced tracking
+            if current_date and self.trade_tracker.current_trade:
+                completed_trade = self.trade_tracker.close_trade(
+                    date=current_date,
+                    price=execution_price,
+                    exit_proceeds=cover_cost
+                )
+                if completed_trade:
+                    if completed_trade.pnl > 0:
+                        self.win_count += 1
+                    else:
+                        self.loss_count += 1
+                    self.trade_count += 1
+            
             pnl = self.portfolio_manager._close_short_position(effective_price)
-            self._update_trade_stats(pnl)
             result['trade_occurred'] = True
             result['pnl'] = pnl
             result['trade_type'] = 'close_short'
         
         # Enter long position
         if self.portfolio_manager.position <= 0:
+            # Calculate position details before entering
+            current_portfolio_value = self.portfolio_manager.get_current_equity(current_price)
+            position_value = current_portfolio_value * self.portfolio_manager.position_sizing * self.portfolio_manager.long_leverage
+            shares = position_value / effective_price
+            entry_cost = shares * effective_price
+            
             success = self.portfolio_manager.enter_long_position(effective_price)
             if success:
-                self.trade_count += 1
+                # Open new trade if using enhanced tracking
+                if current_date:
+                    self.trade_tracker.open_trade(
+                        date=current_date,
+                        price=execution_price,
+                        position_size=shares,
+                        trade_type='long',
+                        entry_cost=entry_cost
+                    )
+                
                 result['executed'] = True
                 if not result['trade_occurred']:
                     result['trade_type'] = 'open_long'
         
         return result
     
-    def execute_sell_signal(self, current_price: float, execution_price: float) -> Dict[str, Any]:
+    def execute_sell_signal(self, current_price: float, execution_price: float, current_date: pd.Timestamp = None) -> Dict[str, Any]:
         """
         Execute sell signal.
         
@@ -119,17 +153,51 @@ class TradeExecutor:
         
         # Close long position first if exists
         if self.portfolio_manager.position > 0:
+            # Calculate exit proceeds
+            shares = self.portfolio_manager.position
+            exit_proceeds = shares * effective_price
+            
+            # Record trade completion if using enhanced tracking
+            if current_date and self.trade_tracker.current_trade:
+                completed_trade = self.trade_tracker.close_trade(
+                    date=current_date,
+                    price=execution_price,
+                    exit_proceeds=exit_proceeds
+                )
+                if completed_trade:
+                    if completed_trade.pnl > 0:
+                        self.win_count += 1
+                    else:
+                        self.loss_count += 1
+                    self.trade_count += 1
+            
             pnl = self.portfolio_manager._close_long_position(effective_price)
-            self._update_trade_stats(pnl)
             result['trade_occurred'] = True
             result['pnl'] = pnl
             result['trade_type'] = 'close_long'
         
         # Enter short position if enabled
         if (self.portfolio_manager.position >= 0 and self.enable_short_selling):
+            # Calculate position details before entering
+            current_portfolio_value = self.portfolio_manager.get_current_equity(current_price)
+            short_value = current_portfolio_value * self.portfolio_manager.position_sizing * self.portfolio_manager.short_leverage
+            shares_to_short = short_value / effective_price
+            
             success = self.portfolio_manager.enter_short_position(effective_price)
             if success:
-                self.trade_count += 1
+                # For shorts, the "entry cost" is actually proceeds received
+                entry_proceeds = shares_to_short * effective_price
+                
+                # Open new trade if using enhanced tracking
+                if current_date:
+                    self.trade_tracker.open_trade(
+                        date=current_date,
+                        price=execution_price,
+                        position_size=shares_to_short,
+                        trade_type='short',
+                        entry_cost=entry_proceeds  # For shorts, this represents proceeds
+                    )
+                
                 result['executed'] = True
                 if not result['trade_occurred']:
                     result['trade_type'] = 'open_short'
@@ -161,6 +229,9 @@ class TradeExecutor:
             dividend_impact = self.portfolio_manager.process_dividend(current_dividend)
             result['dividend_impact'] = dividend_impact
             self.cumulative_dividends += dividend_impact
+            
+            # Track dividends in current trade
+            self.trade_tracker.add_dividend(dividend_impact)
         
         # Apply MMF interest to cash components
         daily_mmf_rate = self.cost_calculator.get_daily_mmf_rate(current_date)
@@ -173,6 +244,9 @@ class TradeExecutor:
             margin_cost = self.portfolio_manager.apply_margin_cost(daily_margin_rate)
             result['margin_cost'] = margin_cost
             self.cumulative_borrowing_costs += margin_cost
+            
+            # Track borrowing costs in current trade
+            self.trade_tracker.add_borrowing_cost(margin_cost)
         
         # Calculate and apply short borrowing costs
         if self.portfolio_manager.position < 0:
@@ -181,36 +255,57 @@ class TradeExecutor:
                 current_price, daily_borrow_rate)
             result['short_borrow_cost'] = short_cost
             self.cumulative_borrowing_costs += short_cost
+            
+            # Track borrowing costs in current trade
+            self.trade_tracker.add_borrowing_cost(short_cost)
         
         return result
     
-    def _update_trade_stats(self, pnl: float):
-        """
-        Update trade statistics based on P&L.
-        
-        Args:
-            pnl: Profit/Loss from the trade
-        """
-        self.trade_count += 1
-        if pnl > 0:
-            self.win_count += 1
-        else:
-            self.loss_count += 1
+
     
     def get_trade_stats(self) -> Dict[str, Any]:
         """
-        Get current trade statistics.
+        Get current trade statistics with enhanced metrics.
         
         Returns:
             Dictionary with trade statistics
         """
+        # Get enhanced stats from trade tracker
+        enhanced_stats = self.trade_tracker.get_stats()
+        
+        # Use enhanced win/loss counts if available and more accurate
+        if enhanced_stats['total_trades'] > 0:
+            win_count = enhanced_stats['winning_trades']
+            loss_count = enhanced_stats['losing_trades']
+            win_rate = enhanced_stats['win_rate']
+        else:
+            win_count = self.win_count
+            loss_count = self.loss_count
+            win_rate = self.win_count / self.trade_count if self.trade_count > 0 else 0.0
+        
         return {
             'trade_count': self.trade_count,
-            'win_count': self.win_count,
-            'loss_count': self.loss_count,
+            'win_count': win_count,
+            'loss_count': loss_count,
+            'win_rate': win_rate,
             'cumulative_dividends': self.cumulative_dividends,
-            'cumulative_borrowing_costs': self.cumulative_borrowing_costs
+            'cumulative_borrowing_costs': self.cumulative_borrowing_costs,
+            # Enhanced metrics
+            'avg_win': enhanced_stats.get('avg_win', 0.0),
+            'avg_loss': enhanced_stats.get('avg_loss', 0.0),
+            'profit_factor': enhanced_stats.get('profit_factor', 0.0),
+            'best_trade': enhanced_stats.get('best_trade', 0.0),
+            'worst_trade': enhanced_stats.get('worst_trade', 0.0)
         }
+    
+    def get_trade_log(self) -> pd.DataFrame:
+        """
+        Get detailed trade log.
+        
+        Returns:
+            DataFrame with all trade details
+        """
+        return self.trade_tracker.get_trade_log()
     
     def reset(self):
         """Reset executor state."""
@@ -219,4 +314,5 @@ class TradeExecutor:
         self.loss_count = 0
         self.cumulative_dividends = 0.0
         self.cumulative_borrowing_costs = 0.0
+        self.trade_tracker.reset()
         self.portfolio_manager.reset()

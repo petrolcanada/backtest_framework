@@ -78,9 +78,10 @@ class TitleGenerator:
     def generate_costs_subtitle(self) -> str:
         """
         Generate dynamic subtitle with costs based on actual backtest configuration.
-        Only shows relevant costs based on strategy setup:
-        - Long only: Commission + Dividends + (Margin if leveraged)
-        - Long/Short: + Short borrow rate + Short proceeds interest
+        Shows:
+        - MMF rate (always, as cash earns interest)
+        - Commission
+        - Other relevant costs based on strategy setup
         
         Returns:
             Formatted subtitle string with relevant trading costs and settings
@@ -89,6 +90,10 @@ class TitleGenerator:
             return ""
         
         subtitle_parts = []
+        
+        # Always show MMF rate first (cash interest rate)
+        # This is the baseline rate that idle cash earns
+        subtitle_parts.append("Cash MMF: FFR-0.25%")
         
         # Always show commission
         if hasattr(self.engine, 'commission'):
