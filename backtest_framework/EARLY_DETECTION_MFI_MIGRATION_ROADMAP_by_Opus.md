@@ -1,4 +1,4 @@
-# Early Detection MFI Strategy Migration Roadmap (Revised)
+# KDJ MFI Early Detection Strategy Migration Roadmap (Revised)
 
 ## Overview
 This roadmap outlines the steps to migrate the legacy `generate_buy_sell_signals_early_detection_3_stages_MFI` strategy into the new backtesting framework, fully leveraging its modular architecture.
@@ -116,12 +116,12 @@ def calculate_adx_consecutive_down(data: pd.DataFrame, required_days: int = 5):
 ### Phase 2: Strategy Implementation (Priority: High)
 
 #### 2.1 Simplified Strategy Class
-Create `backtest_framework/core/strategies/early_detection_mfi.py`:
+Create `backtest_framework/core/strategies/kdj_mfi_early_detection.py`:
 
 ```python
-class EarlyDetectionMFIStrategy(BaseStrategy):
+class KDJMFIEarlyDetectionStrategy(BaseStrategy):
     """
-    Early Detection strategy that generates buy/sell entry signals only.
+    KDJ MFI Early Detection strategy that generates buy/sell entry signals only.
     Exit logic is handled by risk management modules.
     """
     
@@ -213,14 +213,14 @@ class GoldenCrossAwareRiskManager(BaseRiskManager):
 ### Phase 4: Validation Strategy (Priority: High)
 
 #### 4.1 Create Validation Script
-Create `early_detection_mfi_validation.py` in the main backtest_framework directory:
+Create `kdj_mfi_early_detection_validation.py` in the main backtest_framework directory:
 
 ```python
 """
 Validation script to compare new implementation with legacy results.
 """
 from backtest_framework.core.data.loader import DataLoader
-from backtest_framework.core.strategies.early_detection_mfi import EarlyDetectionMFIStrategy
+from backtest_framework.core.strategies.kdj_mfi_early_detection import KDJMFIEarlyDetectionStrategy
 from backtest_framework.core.backtest.engine import BacktestEngine
 # Import legacy function for comparison
 from trading_processor import generate_buy_sell_signals_early_detection_3_stages_MFI
@@ -233,7 +233,7 @@ def validate_strategy():
     legacy_signals = generate_buy_sell_signals_early_detection_3_stages_MFI(data.copy())
     
     # Run new strategy
-    strategy = EarlyDetectionMFIStrategy()
+    strategy = KDJMFIEarlyDetectionStrategy()
     new_signals = strategy.run(data.copy())
     
     # Compare signals
@@ -241,14 +241,14 @@ def validate_strategy():
 ```
 
 #### 4.2 Create Example Backtest
-Create `examples/early_detection_mfi_backtest.py`:
+Create `examples/kdj_mfi_early_detection_backtest.py`:
 
 ```python
 # Load data
 data = DataLoader.load_ticker("SPY", period="5y")
 
 # Initialize strategy
-strategy = EarlyDetectionMFIStrategy(
+strategy = KDJMFIEarlyDetectionStrategy(
     required_up_days=7,
     required_down_days=4
 )
@@ -318,7 +318,7 @@ results = engine.run(data)
 - [ ] Implement ADX_CONSECUTIVE_DOWN indicator
 
 ### Strategy
-- [ ] Create EarlyDetectionMFIStrategy class
+- [ ] Create KDJMFIEarlyDetectionStrategy class
 - [ ] Implement generate_signals() with entry logic only
 - [ ] Remove all exit signal logic (moved to risk management)
 - [ ] Validate signal generation
@@ -346,10 +346,10 @@ backtest_framework/
 │   │   ├── kdj_factors.py  # KDJ-based derived factors
 │   │   └── adx_factors.py  # ADX-based derived factors
 │   └── strategies/
-│       └── early_detection_mfi.py  # Main strategy
+│       └── kdj_mfi_early_detection.py  # Main strategy
 ├── examples/
-│   └── early_detection_mfi_backtest.py  # Example usage
-└── early_detection_mfi_validation.py     # Validation script
+│   └── kdj_mfi_early_detection_backtest.py  # Example usage
+└── kdj_mfi_early_detection_validation.py     # Validation script
 ```
 
 ## Success Criteria
