@@ -43,7 +43,7 @@ class Plotter:
         self.title_gen = TitleGenerator(self.data, self.results, self.engine)
         self.styler = ChartStyler()
         self.chart_elements = ChartElements(self.data, self.results)
-        self.indicators = IndicatorPlots(self.data)
+        self.indicators = IndicatorPlots(self.results)  # Use results data which contains computed indicators
         self.performance = PerformancePlots(self.data, self.results, self.engine)
         self.allocation = AllocationPlots(self.results)
     
@@ -126,8 +126,8 @@ class Plotter:
         # Add dividend markers
         self.chart_elements.add_dividend_markers(fig, row=row, col=1)
         
-        # Add SMA if available
-        if 'SMA' in self.data.columns:
+        # Add SMA if available (check in results data)
+        if 'SMA' in self.results.columns:
             self.indicators.add_sma(fig, row=row, col=1)
         
         # Note: Removed equity curve overlay - it belongs in performance panel, not price panel
@@ -145,19 +145,21 @@ class Plotter:
         # Try monthly KDJ first, then daily KDJ
         success = False
         
-        if all(col in self.data.columns for col in ['monthly_k', 'monthly_d', 'monthly_j']):
+        # Check in results data (which contains computed indicators)
+        if all(col in self.results.columns for col in ['monthly_k', 'monthly_d', 'monthly_j']):
             _, success = self.indicators.add_kdj_indicators(fig, row=row, col=1, is_monthly=True)
-        elif all(col in self.data.columns for col in ['k', 'd', 'j']):
+        elif all(col in self.results.columns for col in ['k', 'd', 'j']):
             _, success = self.indicators.add_kdj_indicators(fig, row=row, col=1, is_monthly=False)
         
         if not success:
             # Add placeholder if no indicators available
+            available_cols = [col for col in self.results.columns if 'kdj' in col.lower() or col in ['k', 'd', 'j', 'monthly_k', 'monthly_d', 'monthly_j']]
             fig.add_annotation(
                 x=0.5, y=0.5,
                 xref=f"x{row} domain", yref=f"y{row} domain",
-                text="No KDJ indicators available",
+                text=f"No KDJ indicators available\nFound columns: {available_cols}",
                 showarrow=False,
-                font=dict(size=14, color="gray")
+                font=dict(size=12, color="gray")
             )
     
     def _build_allocation_panel(self, fig: go.Figure, row: int) -> None:
