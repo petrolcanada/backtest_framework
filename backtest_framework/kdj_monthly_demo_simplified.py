@@ -177,7 +177,29 @@ def main():
                     signal_type = 'BUY' if row['buy_signal'] == 1 else 'SELL'
                     print(f"  {signal_type} on {idx.strftime('%Y-%m-%d')}: Signal generated but never executed")
         
-        # 6. Create visualization
+        # 6. Demonstrate Dynamic Indicator System (NEW FEATURE)
+        print("\n🔍 Dynamic Indicator System Demo:")
+        print("=" * 50)
+        
+        # Import and test the dynamic indicator coordinator
+        from backtest_framework.core.visualization.components.dynamic_indicators import DynamicIndicatorCoordinator
+        from backtest_framework.core.indicators.registry import IndicatorRegistry
+        
+        # Create dynamic indicator coordinator
+        dynamic_coordinator = DynamicIndicatorCoordinator(results)
+        debug_info = dynamic_coordinator.get_debug_info()
+        
+        print("📊 Computed Indicators:")
+        for indicator in debug_info['computed_indicators']:
+            indicator_info = IndicatorRegistry.get(indicator)
+            viz_class = indicator_info.get('visualization_class', 'None')
+            print(f"  • {indicator}: outputs={indicator_info['outputs']}, viz_class={viz_class}")
+        
+        print(f"\n🎨 Available Visualizations: {debug_info['available_visualizations']}")
+        print(f"📋 All Registered Indicators: {debug_info['registered_indicators']}")
+        print(f"🏗️  Visualization Registry: {debug_info['visualization_registry']}")
+        
+        # 7. Create visualization
         print("\nGenerating visualization...")
         output_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output")
         os.makedirs(output_dir, exist_ok=True)

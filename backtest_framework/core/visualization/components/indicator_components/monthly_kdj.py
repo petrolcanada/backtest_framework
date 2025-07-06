@@ -1,55 +1,68 @@
 """
-Technical indicator visualization components.
+Monthly KDJ indicator visualization component.
 """
 from typing import Tuple
 import pandas as pd
 import plotly.graph_objects as go
-from .styling import ChartStyler
+from .base import BaseIndicatorVisualization
+from ..styling import ChartStyler
 
 
-class IndicatorPlots:
-    """Handles technical indicator visualizations."""
+class MonthlyKDJ(BaseIndicatorVisualization):
+    """Visualization component for Monthly KDJ indicator."""
     
     def __init__(self, data: pd.DataFrame):
         """
-        Initialize indicator plots.
+        Initialize Monthly KDJ visualization.
         
         Args:
-            data: DataFrame with OHLCV data and indicators
+            data: DataFrame containing monthly KDJ data
         """
-        self.data = data
+        super().__init__(data)
         self.styler = ChartStyler()
+        self.required_columns = ['monthly_k', 'monthly_d', 'monthly_j']
     
-    def add_kdj_indicators(self, fig: go.Figure, row: int = 1, col: int = 1, 
-                          is_monthly: bool = False) -> Tuple[go.Figure, bool]:
+    def check_data_availability(self) -> bool:
         """
-        Add KDJ indicator lines to the specified subplot.
+        Check if Monthly KDJ data is available.
+        
+        Returns:
+            True if all required columns are present, False otherwise
+        """
+        return all(col in self.data.columns for col in self.required_columns)
+    
+    def get_required_columns(self) -> list:
+        """
+        Get the list of required column names for Monthly KDJ.
+        
+        Returns:
+            List of required column names
+        """
+        return self.required_columns
+    
+    def add_to_chart(self, fig: go.Figure, row: int = 1, col: int = 1) -> Tuple[go.Figure, bool]:
+        """
+        Add Monthly KDJ indicator lines to the specified subplot.
         
         Args:
             fig: Plotly figure to add trace to
             row: Row index for the subplot
             col: Column index for the subplot
-            is_monthly: Whether to use monthly KDJ indicators
             
         Returns:
             Tuple of (updated figure, boolean indicating if indicators were found)
         """
-        # Only using snake_case naming convention going forward
-        prefix = "monthly_" if is_monthly else ""
-        
-        # Check if all KDJ indicators are present
-        kdj_cols = [f"{prefix}k", f"{prefix}d", f"{prefix}j"]
-        if not all(col in self.data.columns for col in kdj_cols):
+        if not self.check_data_availability():
             return fig, False
             
         # Add K line
         fig.add_trace(
             go.Scatter(
                 x=self.data.index,
-                y=self.data[f"{prefix}k"],
+                y=self.data['monthly_k'],
                 mode='lines',
                 line=self.styler.get_line_style(color=self.styler.COLORS['kdj_k']),
-                name=f"{prefix.capitalize()}K"
+                name="Monthly K"
             ),
             row=row, col=col
         )
@@ -58,10 +71,10 @@ class IndicatorPlots:
         fig.add_trace(
             go.Scatter(
                 x=self.data.index,
-                y=self.data[f"{prefix}d"],
+                y=self.data['monthly_d'],
                 mode='lines',
                 line=self.styler.get_line_style(color=self.styler.COLORS['kdj_d']),
-                name=f"{prefix.capitalize()}D"
+                name="Monthly D"
             ),
             row=row, col=col
         )
@@ -70,10 +83,10 @@ class IndicatorPlots:
         fig.add_trace(
             go.Scatter(
                 x=self.data.index,
-                y=self.data[f"{prefix}j"],
+                y=self.data['monthly_j'],
                 mode='lines',
                 line=self.styler.get_line_style(color=self.styler.COLORS['kdj_j'], width=2),
-                name=f"{prefix.capitalize()}J"
+                name="Monthly J"
             ),
             row=row, col=col
         )
@@ -85,52 +98,26 @@ class IndicatorPlots:
                     annotation_text="Oversold", row=row, col=col)
         
         # Add ending value annotations for KDJ values
-        self._add_kdj_ending_annotations(fig, row, col, prefix)
+        self._add_kdj_ending_annotations(fig, row, col)
         
-        # Add golden/dead crosses for monthly KDJ
-        if is_monthly:
-            self._add_kdj_crosses(fig, prefix, row, col)
+        # Add golden/dead crosses
+        self._add_kdj_crosses(fig, row, col)
         
         return fig, True
     
-    def add_sma(self, fig: go.Figure, row: int = 1, col: int = 1) -> go.Figure:
+    def _add_kdj_ending_annotations(self, fig: go.Figure, row: int, col: int) -> None:
         """
-        Add Simple Moving Average to the price chart.
-        
-        Args:
-            fig: Plotly figure to add trace to
-            row: Row index for the subplot
-            col: Column index for the subplot
-            
-        Returns:
-            Updated figure
-        """
-        if 'SMA' in self.data.columns:
-            fig.add_trace(
-                go.Scatter(
-                    x=self.data.index,
-                    y=self.data['SMA'],
-                    mode='lines',
-                    line=self.styler.get_line_style(color='blue'),
-                    name="SMA"
-                ),
-                row=row, col=col
-            )
-    
-    def _add_kdj_ending_annotations(self, fig: go.Figure, row: int, col: int, prefix: str) -> None:
-        """
-        Add ending value annotations for KDJ indicators at their actual value positions.
+        Add ending value annotations for Monthly KDJ indicators at their actual value positions.
         
         Args:
             fig: Plotly figure to add annotations to
             row: Row index for the subplot
             col: Column index for the subplot
-            prefix: Prefix for column names (e.g., "monthly_")
         """
         # Get final values for each KDJ component
-        final_k = self.data[f"{prefix}k"].iloc[-1]
-        final_d = self.data[f"{prefix}d"].iloc[-1]
-        final_j = self.data[f"{prefix}j"].iloc[-1]
+        final_k = self.data['monthly_k'].iloc[-1]
+        final_d = self.data['monthly_d'].iloc[-1]
+        final_j = self.data['monthly_j'].iloc[-1]
         
         # Generate correct xref and yref for subplot
         if row == 1:
@@ -178,35 +165,33 @@ class IndicatorPlots:
                 xanchor="left",
                 yanchor="middle"
             )
-        return fig
     
-    def _add_kdj_crosses(self, fig: go.Figure, prefix: str, row: int, col: int) -> None:
+    def _add_kdj_crosses(self, fig: go.Figure, row: int, col: int) -> None:
         """
-        Add golden and dead cross markers for KDJ indicators.
+        Add golden and dead cross markers for Monthly KDJ indicators.
         
         Args:
             fig: Plotly figure to add trace to
-            prefix: Prefix for column names (e.g., "monthly_")
             row: Row index for the subplot
             col: Column index for the subplot
         """
         # Find golden crosses (J crosses above K)
         golden_crosses = []
         for i in range(1, len(self.data)):
-            if (self.data[f'{prefix}j'].iloc[i-1] <= self.data[f'{prefix}k'].iloc[i-1] and 
-                self.data[f'{prefix}j'].iloc[i] >= self.data[f'{prefix}k'].iloc[i]):
+            if (self.data['monthly_j'].iloc[i-1] <= self.data['monthly_k'].iloc[i-1] and 
+                self.data['monthly_j'].iloc[i] >= self.data['monthly_k'].iloc[i]):
                 golden_crosses.append(self.data.index[i])
         
         # Find dead crosses (J crosses below K)
         dead_crosses = []
         for i in range(1, len(self.data)):
-            if (self.data[f'{prefix}j'].iloc[i-1] >= self.data[f'{prefix}k'].iloc[i-1] and 
-                self.data[f'{prefix}j'].iloc[i] < self.data[f'{prefix}k'].iloc[i]):
+            if (self.data['monthly_j'].iloc[i-1] >= self.data['monthly_k'].iloc[i-1] and 
+                self.data['monthly_j'].iloc[i] < self.data['monthly_k'].iloc[i]):
                 dead_crosses.append(self.data.index[i])
         
         # Add markers for golden crosses
         if golden_crosses:
-            j_values = [self.data.loc[date, f'{prefix}j'] for date in golden_crosses]
+            j_values = [self.data.loc[date, 'monthly_j'] for date in golden_crosses]
             fig.add_trace(
                 go.Scatter(
                     x=golden_crosses,
@@ -224,7 +209,7 @@ class IndicatorPlots:
         
         # Add markers for dead crosses
         if dead_crosses:
-            j_values = [self.data.loc[date, f'{prefix}j'] for date in dead_crosses]
+            j_values = [self.data.loc[date, 'monthly_j'] for date in dead_crosses]
             fig.add_trace(
                 go.Scatter(
                     x=dead_crosses,

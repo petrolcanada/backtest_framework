@@ -13,15 +13,18 @@ This module contains focused components for different aspects of chart creation:
 from .titles import TitleGenerator
 from .styling import ChartStyler
 from .chart_elements import ChartElements
-from .indicators import IndicatorPlots
 from .performance import PerformancePlots
 from .allocation import AllocationPlots
+from .dynamic_indicators import DynamicIndicatorCoordinator
+
+# Note: indicators.py (old static system) has been replaced by dynamic_indicators.py
+# and the modular indicator_components/ directory
 
 __all__ = [
     'TitleGenerator',
     'ChartStyler', 
     'ChartElements',
-    'IndicatorPlots',
     'PerformancePlots',
-    'AllocationPlots'
+    'AllocationPlots',
+    'DynamicIndicatorCoordinator'
 ]

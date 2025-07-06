@@ -13,7 +13,7 @@ class IndicatorRegistry:
     _indicators: Dict[str, Dict[str, Any]] = {}
     
     @classmethod
-    def register(cls, name: str, inputs: List[str], params: Dict[str, Any] = None, outputs: Optional[List[str]] = None):
+    def register(cls, name: str, inputs: List[str], params: Dict[str, Any] = None, outputs: Optional[List[str]] = None, visualization_class: Optional[str] = None):
         """
         Decorator to register an indicator function with its metadata.
         
@@ -22,6 +22,7 @@ class IndicatorRegistry:
             inputs: List of input columns/indicators required
             params: Default parameters for the indicator
             outputs: List of output column names generated (defaults to [name] if None)
+            visualization_class: Name of the visualization class to use for this indicator
         
         Returns:
             Decorator function that registers the indicator
@@ -37,7 +38,8 @@ class IndicatorRegistry:
                 'inputs': inputs,
                 'params': params,
                 'outputs': outputs,
-                'sig': inspect.signature(func)
+                'sig': inspect.signature(func),
+                'visualization_class': visualization_class
             }
             return func
         return decorator
@@ -142,3 +144,22 @@ class IndicatorRegistry:
                     dependencies.update(cls.get_dependencies([dep]))
         
         return dependencies
+    
+    @classmethod
+    def get_visualization_classes(cls, computed_indicators: List[str]) -> List[str]:
+        """
+        Get visualization classes for computed indicators.
+        
+        Args:
+            computed_indicators: List of computed indicator names
+            
+        Returns:
+            List of visualization class names that should be used
+        """
+        viz_classes = []
+        for indicator in computed_indicators:
+            if indicator in cls._indicators:
+                viz_class = cls._indicators[indicator].get('visualization_class')
+                if viz_class and viz_class not in viz_classes:
+                    viz_classes.append(viz_class)
+        return viz_classes

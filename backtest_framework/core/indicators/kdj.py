@@ -59,7 +59,8 @@ def calculate_kdj_slopes(data: pd.DataFrame) -> pd.DataFrame:
     name="MONTHLY_KDJ",
     inputs=["High", "Low", "Close"],
     params={"period": 198, "signal": 66},  # 9 months * 22 trading days, 3 months * 22 trading days
-    outputs=["monthly_k", "monthly_d", "monthly_j"]
+    outputs=["monthly_k", "monthly_d", "monthly_j"],
+    visualization_class="MonthlyKDJ"
 )
 def calculate_monthly_kdj(data: pd.DataFrame, period: int = 198, signal: int = 66) -> pd.DataFrame:
     """

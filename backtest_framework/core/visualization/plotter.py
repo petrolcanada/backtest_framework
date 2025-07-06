@@ -11,9 +11,9 @@ from .components import (
     TitleGenerator,
     ChartStyler,
     ChartElements,
-    IndicatorPlots,
     PerformancePlots,
-    AllocationPlots
+    AllocationPlots,
+    DynamicIndicatorCoordinator
 )
 
 
@@ -43,9 +43,11 @@ class Plotter:
         self.title_gen = TitleGenerator(self.data, self.results, self.engine)
         self.styler = ChartStyler()
         self.chart_elements = ChartElements(self.data, self.results)
-        self.indicators = IndicatorPlots(self.results)  # Use results data which contains computed indicators
         self.performance = PerformancePlots(self.data, self.results, self.engine)
         self.allocation = AllocationPlots(self.results)
+        
+        # Initialize dynamic indicator coordinator
+        self.dynamic_indicators = DynamicIndicatorCoordinator(self.results)
     
     def create_comprehensive_chart(self, ticker: str = '', base_strategy_name: str = "Strategy", 
                                  log_scale: bool = True) -> go.Figure:
@@ -130,11 +132,8 @@ class Plotter:
         # Add dividend markers
         self.chart_elements.add_dividend_markers(fig, row=row, col=1)
         
-        # Add SMA if available (check in results data)
-        if 'SMA' in self.results.columns:
-            self.indicators.add_sma(fig, row=row, col=1)
-        
-        # Note: Removed equity curve overlay - it belongs in performance panel, not price panel
+        # Add price panel indicators (like SMA) using dynamic system
+        self.dynamic_indicators.apply_price_panel_indicators(fig, row=row, col=1)
     
     def _build_performance_panel(self, fig: go.Figure, row: int) -> None:
         """Build the performance comparison panel."""
@@ -145,23 +144,19 @@ class Plotter:
         self.performance.add_drawdown_comparison(fig, row=row, col=1)
     
     def _build_indicators_panel(self, fig: go.Figure, row: int) -> None:
-        """Build the technical indicators panel."""
-        # Try monthly KDJ first, then daily KDJ
-        success = False
-        
-        # Check in results data (which contains computed indicators)
-        if all(col in self.results.columns for col in ['monthly_k', 'monthly_d', 'monthly_j']):
-            _, success = self.indicators.add_kdj_indicators(fig, row=row, col=1, is_monthly=True)
-        elif all(col in self.results.columns for col in ['k', 'd', 'j']):
-            _, success = self.indicators.add_kdj_indicators(fig, row=row, col=1, is_monthly=False)
+        """Build the technical indicators panel using dynamic indicator system."""
+        # Use the dynamic indicator coordinator to automatically detect and apply indicator panel indicators
+        fig, success = self.dynamic_indicators.apply_indicator_panel_indicators(fig, row=row, col=1)
         
         if not success:
-            # Add placeholder if no indicators available
-            available_cols = [col for col in self.results.columns if 'kdj' in col.lower() or col in ['k', 'd', 'j', 'monthly_k', 'monthly_d', 'monthly_j']]
+            # Get debug info for troubleshooting
+            debug_info = self.dynamic_indicators.get_debug_info()
+            
+            # Add placeholder with debug information
             fig.add_annotation(
                 x=0.5, y=0.5,
                 xref=f"x{row} domain", yref=f"y{row} domain",
-                text=f"No KDJ indicators available\nFound columns: {available_cols}",
+                text=f"No indicators available<br>Computed: {debug_info['computed_indicators']}<br>Available viz: {debug_info['available_visualizations']}",
                 showarrow=False,
                 font=dict(size=12, color="gray")
             )
