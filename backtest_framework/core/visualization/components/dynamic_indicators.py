@@ -39,11 +39,17 @@ class DynamicIndicatorCoordinator:
         # Import available visualization classes
         from .indicator_components.monthly_kdj import MonthlyKDJ
         from .indicator_components.sma import SMA
+        from .indicator_components.adx import ADX
+        from .indicator_components.mfi import MFI
+        from .indicator_components.rsi import RSI
         
         # Build registry
         registry = {
             'MonthlyKDJ': MonthlyKDJ,
             'SMA': SMA,
+            'ADX': ADX,
+            'MFI': MFI,
+            'RSI': RSI,
             # Add more visualization classes here as they're created
         }
         
@@ -169,7 +175,7 @@ class DynamicIndicatorCoordinator:
             Tuple of (updated figure, success boolean)
         """
         # Define which indicators belong on the indicator panel
-        indicator_panel_indicators = ['MonthlyKDJ']  # Add more as needed
+        indicator_panel_indicators = ['MonthlyKDJ', 'ADX', 'MFI', 'RSI']  # Oscillators and momentum indicators
         
         available_viz = self.get_available_visualizations()
         indicator_viz = [viz for viz in available_viz if viz in indicator_panel_indicators]

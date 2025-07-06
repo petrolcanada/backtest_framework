@@ -7,7 +7,7 @@ from backtest_framework.core.indicators.registry import IndicatorRegistry
 
 @IndicatorRegistry.register(
     name="ADX_CONSECUTIVE_DOWN",
-    inputs=["adx"],
+    inputs=["ADX"],
     params={"required_days": 5},
     outputs=["adx_consecutive_down_days", "adx_down_condition_met"]
 )
@@ -25,15 +25,15 @@ def calculate_adx_consecutive_down(data: pd.DataFrame, required_days: int = 5) -
     Returns:
         DataFrame with adx_consecutive_down_days, adx_down_condition_met columns
     """
-    # Ensure adx column exists
-    if 'adx' not in data.columns:
-        raise ValueError(f"Required column 'adx' not found in data. Available columns: {list(data.columns)}")
+    # Ensure ADX column exists
+    if 'ADX' not in data.columns:
+        raise ValueError(f"Required column 'ADX' not found in data. Available columns: {list(data.columns)}")
     
     # Create result DataFrame
     result = pd.DataFrame(index=data.index)
     
     # Calculate ADX changes
-    adx_diff = data['adx'].diff()
+    adx_diff = data['ADX'].diff()
     
     # Initialize tracking arrays
     consecutive_down = np.zeros(len(data))
@@ -69,7 +69,7 @@ def calculate_adx_consecutive_down(data: pd.DataFrame, required_days: int = 5) -
 
 @IndicatorRegistry.register(
     name="ADX_TREND_STRENGTH",
-    inputs=["adx", "adx_sma"],
+    inputs=["ADX", "ADX_SMA"],
     params={"weak_threshold": 20, "strong_threshold": 40},
     outputs=["adx_trend_strength", "adx_above_sma", "adx_strength_signal"]
 )
@@ -89,7 +89,7 @@ def calculate_adx_trend_strength(data: pd.DataFrame, weak_threshold: int = 20, s
         DataFrame with adx_trend_strength, adx_above_sma, adx_strength_signal columns
     """
     # Ensure required columns exist
-    required_cols = ['adx', 'adx_sma']
+    required_cols = ['ADX', 'ADX_SMA']
     for col in required_cols:
         if col not in data.columns:
             raise ValueError(f"Required column '{col}' not found in data. Available columns: {list(data.columns)}")
@@ -102,7 +102,7 @@ def calculate_adx_trend_strength(data: pd.DataFrame, weak_threshold: int = 20, s
     trend_strength = np.zeros(len(data))
     
     for i in range(len(data)):
-        adx_val = data['adx'].iloc[i]
+        adx_val = data['ADX'].iloc[i]
         
         if pd.isna(adx_val):
             trend_strength[i] = 0
@@ -114,24 +114,24 @@ def calculate_adx_trend_strength(data: pd.DataFrame, weak_threshold: int = 20, s
             trend_strength[i] = 2  # Strong trend
     
     # Check if ADX is above its SMA
-    adx_above_sma = (data['adx'] > data['adx_sma']).astype(int)
+    adx_above_sma = (data['ADX'] > data['ADX_SMA']).astype(int)
     
     # Generate strength signals
     # 1 = strengthening trend, -1 = weakening trend, 0 = neutral
     strength_signal = np.zeros(len(data))
     
     for i in range(1, len(data)):
-        if pd.isna(data['adx'].iloc[i]) or pd.isna(data['adx_sma'].iloc[i]):
+        if pd.isna(data['ADX'].iloc[i]) or pd.isna(data['ADX_SMA'].iloc[i]):
             continue
             
         # Strengthening: ADX rising and above SMA
-        if (data['adx'].iloc[i] > data['adx'].iloc[i-1] and 
-            data['adx'].iloc[i] > data['adx_sma'].iloc[i]):
+        if (data['ADX'].iloc[i] > data['ADX'].iloc[i-1] and 
+            data['ADX'].iloc[i] > data['ADX_SMA'].iloc[i]):
             strength_signal[i] = 1
             
         # Weakening: ADX falling and below SMA
-        elif (data['adx'].iloc[i] < data['adx'].iloc[i-1] and 
-              data['adx'].iloc[i] < data['adx_sma'].iloc[i]):
+        elif (data['ADX'].iloc[i] < data['ADX'].iloc[i-1] and 
+              data['ADX'].iloc[i] < data['ADX_SMA'].iloc[i]):
             strength_signal[i] = -1
     
     # Assign to result DataFrame

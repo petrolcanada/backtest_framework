@@ -92,14 +92,14 @@ class Plotter:
             ]
         )
         
-        # Adjust subplot positions with perfectly equal heights for all sub-panels
-        # Price panel: 21% height, All sub-panels: exactly 15% height each with 3% spacing
+        # Adjust subplot positions - give more space to indicator panel for multiple indicators
+        # Price panel: 18% height, Performance: 15%, Drawdowns: 15%, Allocation: 15%, Indicators: 25%
         fig.update_layout(
-            yaxis=dict(domain=[0.73, 0.94]),     # Price panel - 21% height
-            yaxis2=dict(domain=[0.58, 0.73]),    # Performance panel - 15% height
-            yaxis3=dict(domain=[0.43, 0.58]),    # Drawdowns panel - 15% height  
-            yaxis4=dict(domain=[0.28, 0.43]),    # Capital allocation panel - 15% height
-            yaxis5=dict(domain=[0.13, 0.28])     # Indicators panel - 15% height (same as others)
+            yaxis=dict(domain=[0.75, 0.93]),     # Price panel - 18% height
+            yaxis2=dict(domain=[0.60, 0.75]),    # Performance panel - 15% height
+            yaxis3=dict(domain=[0.45, 0.60]),    # Drawdowns panel - 15% height  
+            yaxis4=dict(domain=[0.30, 0.45]),    # Capital allocation panel - 15% height
+            yaxis5=dict(domain=[0.05, 0.30])     # Indicators panel - 25% height (increased for multiple indicators)
         )
         
         # Style subplot titles
@@ -263,7 +263,7 @@ class Plotter:
             'yaxis2': self.styler.get_axis_config("Performance (%)", "linear", "right"),
             'yaxis3': self.styler.get_axis_config("Drawdown (%)", "linear", "right"),
             'yaxis4': self.styler.get_axis_config("Capital ($)", "linear", "right"),  # Capital allocation moved to row 4
-            'yaxis5': self.styler.get_axis_config("KDJ Values", "linear", "right")   # Indicators moved to row 5
+            'yaxis5': self.styler.get_axis_config("Indicator Values", "linear", "right")   # Indicators moved to row 5
         }
         
         # Apply all configurations

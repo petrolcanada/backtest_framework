@@ -9,7 +9,8 @@ from backtest_framework.core.indicators.registry import IndicatorRegistry
     name="MFI",
     inputs=["High", "Low", "Close", "Volume"],
     params={"length": 48},
-    outputs=["mfi"]
+    outputs=["MFI"],
+    visualization_class="MFI"
 )
 def calculate_mfi(data: pd.DataFrame, length: int = 48) -> pd.DataFrame:
     """
@@ -47,9 +48,9 @@ def calculate_mfi(data: pd.DataFrame, length: int = 48) -> pd.DataFrame:
     
     if mfi_result is None:
         # Not enough data or calculation failed, return empty column
-        result['mfi'] = float('nan')
+        result['MFI'] = float('nan')
     else:
-        result['mfi'] = mfi_result
+        result['MFI'] = mfi_result
     
     return result
 

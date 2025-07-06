@@ -9,7 +9,8 @@ from backtest_framework.core.indicators.registry import IndicatorRegistry
     name="ADX",
     inputs=["High", "Low", "Close"],
     params={"window": 308, "sma_length": 5},
-    outputs=["adx", "adx_sma"]
+    outputs=["ADX", "ADX_SMA"],
+    visualization_class="ADX"
 )
 def calculate_adx(data: pd.DataFrame, window: int = 308, sma_length: int = 5) -> pd.DataFrame:
     """
@@ -34,14 +35,14 @@ def calculate_adx(data: pd.DataFrame, window: int = 308, sma_length: int = 5) ->
     
     if adx_result is None or f'ADX_{window}' not in adx_result.columns:
         # Not enough data or calculation failed, return empty columns
-        result['adx'] = float('nan')
-        result['adx_sma'] = float('nan')
+        result['ADX'] = float('nan')
+        result['ADX_SMA'] = float('nan')
     else:
         # Extract ADX values
-        result['adx'] = adx_result[f'ADX_{window}']
+        result['ADX'] = adx_result[f'ADX_{window}']
         
         # Calculate SMA smoothing of ADX
-        result['adx_sma'] = result['adx'].rolling(window=sma_length, min_periods=1).mean()
+        result['ADX_SMA'] = result['ADX'].rolling(window=sma_length, min_periods=1).mean()
     
     return result
 

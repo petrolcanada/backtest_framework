@@ -7,7 +7,7 @@ from backtest_framework.core.indicators.registry import IndicatorRegistry
 
 @IndicatorRegistry.register(
     name="RSI_OVERBOUGHT_OVERSOLD",
-    inputs=["rsi"],
+    inputs=["RSI"],
     params={"overbought_level": 70, "oversold_level": 30, "extreme_overbought": 80, "extreme_oversold": 20},
     outputs=["rsi_zone", "rsi_overbought", "rsi_oversold", "rsi_extreme_overbought", "rsi_extreme_oversold"]
 )
@@ -20,7 +20,7 @@ def calculate_rsi_overbought_oversold(data: pd.DataFrame, overbought_level: int 
     overbought/oversold conditions for trading signals.
     
     Args:
-        data: DataFrame with rsi column
+        data: DataFrame with RSI column
         overbought_level: RSI level considered overbought (default: 70)
         oversold_level: RSI level considered oversold (default: 30)
         extreme_overbought: RSI level considered extremely overbought (default: 80)
@@ -29,9 +29,9 @@ def calculate_rsi_overbought_oversold(data: pd.DataFrame, overbought_level: int 
     Returns:
         DataFrame with rsi_zone, rsi_overbought, rsi_oversold, rsi_extreme_overbought, rsi_extreme_oversold columns
     """
-    # Ensure rsi column exists
-    if 'rsi' not in data.columns:
-        raise ValueError(f"Required column 'rsi' not found in data. Available columns: {list(data.columns)}")
+    # Ensure RSI column exists
+    if 'RSI' not in data.columns:
+        raise ValueError(f"Required column 'RSI' not found in data. Available columns: {list(data.columns)}")
     
     # Create result DataFrame
     result = pd.DataFrame(index=data.index)
@@ -41,7 +41,7 @@ def calculate_rsi_overbought_oversold(data: pd.DataFrame, overbought_level: int 
     rsi_zone = np.zeros(len(data))
     
     for i in range(len(data)):
-        rsi_val = data['rsi'].iloc[i]
+        rsi_val = data['RSI'].iloc[i]
         
         if pd.isna(rsi_val):
             rsi_zone[i] = 1  # Default to neutral
@@ -54,16 +54,16 @@ def calculate_rsi_overbought_oversold(data: pd.DataFrame, overbought_level: int 
     
     # Create binary indicators
     result['rsi_zone'] = rsi_zone
-    result['rsi_overbought'] = (data['rsi'] >= overbought_level).astype(int)
-    result['rsi_oversold'] = (data['rsi'] <= oversold_level).astype(int)
-    result['rsi_extreme_overbought'] = (data['rsi'] >= extreme_overbought).astype(int)
-    result['rsi_extreme_oversold'] = (data['rsi'] <= extreme_oversold).astype(int)
+    result['rsi_overbought'] = (data['RSI'] >= overbought_level).astype(int)
+    result['rsi_oversold'] = (data['RSI'] <= oversold_level).astype(int)
+    result['rsi_extreme_overbought'] = (data['RSI'] >= extreme_overbought).astype(int)
+    result['rsi_extreme_oversold'] = (data['RSI'] <= extreme_oversold).astype(int)
     
     return result
 
 @IndicatorRegistry.register(
     name="RSI_REVERSAL_SIGNALS",
-    inputs=["rsi"],
+    inputs=["RSI"],
     params={"lookback_period": 14, "reversal_threshold": 5},
     outputs=["rsi_bullish_reversal", "rsi_bearish_reversal", "rsi_reversal_strength"]
 )
@@ -75,16 +75,16 @@ def calculate_rsi_reversal_signals(data: pd.DataFrame, lookback_period: int = 14
     in overbought/oversold zones and momentum shifts.
     
     Args:
-        data: DataFrame with rsi column
+        data: DataFrame with RSI column
         lookback_period: Period to analyze for reversal patterns (default: 14)
         reversal_threshold: Minimum RSI change required for reversal signal (default: 5)
         
     Returns:
         DataFrame with rsi_bullish_reversal, rsi_bearish_reversal, rsi_reversal_strength columns
     """
-    # Ensure rsi column exists
-    if 'rsi' not in data.columns:
-        raise ValueError(f"Required column 'rsi' not found in data. Available columns: {list(data.columns)}")
+    # Ensure RSI column exists
+    if 'RSI' not in data.columns:
+        raise ValueError(f"Required column 'RSI' not found in data. Available columns: {list(data.columns)}")
     
     # Create result DataFrame
     result = pd.DataFrame(index=data.index)
@@ -95,20 +95,20 @@ def calculate_rsi_reversal_signals(data: pd.DataFrame, lookback_period: int = 14
     reversal_strength = np.zeros(len(data))
     
     for i in range(lookback_period, len(data)):
-        current_rsi = data['rsi'].iloc[i]
+        current_rsi = data['RSI'].iloc[i]
         
         if pd.isna(current_rsi):
             continue
             
         # Get recent RSI values
-        recent_rsi = data['rsi'].iloc[i-lookback_period:i+1]
+        recent_rsi = data['RSI'].iloc[i-lookback_period:i+1]
         min_recent_rsi = recent_rsi.min()
         max_recent_rsi = recent_rsi.max()
         
         # Bullish reversal: RSI was oversold and is now rising
         if (min_recent_rsi <= 30 and  # Was in oversold territory
             current_rsi > min_recent_rsi + reversal_threshold and  # Significant rise
-            current_rsi > data['rsi'].iloc[i-1]):  # Currently rising
+            current_rsi > data['RSI'].iloc[i-1]):  # Currently rising
             
             bullish_reversal[i] = 1
             reversal_strength[i] = current_rsi - min_recent_rsi
@@ -116,7 +116,7 @@ def calculate_rsi_reversal_signals(data: pd.DataFrame, lookback_period: int = 14
         # Bearish reversal: RSI was overbought and is now falling
         elif (max_recent_rsi >= 70 and  # Was in overbought territory
               current_rsi < max_recent_rsi - reversal_threshold and  # Significant fall
-              current_rsi < data['rsi'].iloc[i-1]):  # Currently falling
+              current_rsi < data['RSI'].iloc[i-1]):  # Currently falling
             
             bearish_reversal[i] = 1
             reversal_strength[i] = max_recent_rsi - current_rsi
@@ -130,7 +130,7 @@ def calculate_rsi_reversal_signals(data: pd.DataFrame, lookback_period: int = 14
 
 @IndicatorRegistry.register(
     name="RSI_TREND_CONFIRMATION",
-    inputs=["rsi"],
+    inputs=["RSI"],
     params={"trend_period": 20, "confirmation_threshold": 50},
     outputs=["rsi_trend_direction", "rsi_trend_strength", "rsi_trend_confirmed"]
 )
@@ -142,22 +142,22 @@ def calculate_rsi_trend_confirmation(data: pd.DataFrame, trend_period: int = 20,
     providing additional confirmation for trading decisions.
     
     Args:
-        data: DataFrame with rsi column
+        data: DataFrame with RSI column
         trend_period: Period to analyze for trend confirmation (default: 20)
         confirmation_threshold: RSI level that separates bullish/bearish bias (default: 50)
         
     Returns:
         DataFrame with rsi_trend_direction, rsi_trend_strength, rsi_trend_confirmed columns
     """
-    # Ensure rsi column exists
-    if 'rsi' not in data.columns:
-        raise ValueError(f"Required column 'rsi' not found in data. Available columns: {list(data.columns)}")
+    # Ensure RSI column exists
+    if 'RSI' not in data.columns:
+        raise ValueError(f"Required column 'RSI' not found in data. Available columns: {list(data.columns)}")
     
     # Create result DataFrame
     result = pd.DataFrame(index=data.index)
     
     # Calculate RSI moving average for trend analysis
-    rsi_ma = data['rsi'].rolling(window=trend_period).mean()
+    rsi_ma = data['RSI'].rolling(window=trend_period).mean()
     
     # Initialize trend indicators
     trend_direction = np.zeros(len(data))  # 1 = bullish, -1 = bearish, 0 = neutral
@@ -165,7 +165,7 @@ def calculate_rsi_trend_confirmation(data: pd.DataFrame, trend_period: int = 20,
     trend_confirmed = np.zeros(len(data))
     
     for i in range(trend_period, len(data)):
-        current_rsi = data['rsi'].iloc[i]
+        current_rsi = data['RSI'].iloc[i]
         current_rsi_ma = rsi_ma.iloc[i]
         
         if pd.isna(current_rsi) or pd.isna(current_rsi_ma):
@@ -183,7 +183,7 @@ def calculate_rsi_trend_confirmation(data: pd.DataFrame, trend_period: int = 20,
             trend_strength[i] = 0
         
         # Confirm trend if RSI has been consistently on one side
-        recent_rsi = data['rsi'].iloc[i-10:i+1]  # Last 10 periods
+        recent_rsi = data['RSI'].iloc[i-10:i+1]  # Last 10 periods
         
         if trend_direction[i] == 1:  # Bullish trend
             bullish_consistency = (recent_rsi > confirmation_threshold).mean()

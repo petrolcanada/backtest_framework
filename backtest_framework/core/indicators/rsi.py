@@ -9,7 +9,8 @@ from backtest_framework.core.indicators.registry import IndicatorRegistry
     name="RSI",
     inputs=["Close"],
     params={"period": 14},
-    outputs=["rsi"]
+    outputs=["RSI"],
+    visualization_class="RSI"
 )
 def calculate_rsi(data: pd.DataFrame, period: int = 14) -> pd.DataFrame:
     """
@@ -39,9 +40,9 @@ def calculate_rsi(data: pd.DataFrame, period: int = 14) -> pd.DataFrame:
     
     if rsi_result is None:
         # Not enough data or calculation failed, return empty column
-        result['rsi'] = float('nan')
+        result['RSI'] = float('nan')
     else:
-        result['rsi'] = rsi_result
+        result['RSI'] = rsi_result
     
     return result
 

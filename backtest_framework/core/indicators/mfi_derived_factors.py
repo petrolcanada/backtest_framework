@@ -7,7 +7,7 @@ from backtest_framework.core.indicators.registry import IndicatorRegistry
 
 @IndicatorRegistry.register(
     name="MFI_OVERBOUGHT_OVERSOLD",
-    inputs=["mfi"],
+    inputs=["MFI"],
     params={"overbought_level": 80, "oversold_level": 20, "neutral_upper": 60, "neutral_lower": 40},
     outputs=["mfi_zone", "mfi_overbought", "mfi_oversold", "mfi_neutral"]
 )
@@ -29,9 +29,9 @@ def calculate_mfi_overbought_oversold(data: pd.DataFrame, overbought_level: int 
     Returns:
         DataFrame with mfi_zone, mfi_overbought, mfi_oversold, mfi_neutral columns
     """
-    # Ensure mfi column exists
-    if 'mfi' not in data.columns:
-        raise ValueError(f"Required column 'mfi' not found in data. Available columns: {list(data.columns)}")
+    # Ensure MFI column exists
+    if 'MFI' not in data.columns:
+        raise ValueError(f"Required column 'MFI' not found in data. Available columns: {list(data.columns)}")
     
     # Create result DataFrame
     result = pd.DataFrame(index=data.index)
@@ -41,7 +41,7 @@ def calculate_mfi_overbought_oversold(data: pd.DataFrame, overbought_level: int 
     mfi_zone = np.zeros(len(data))
     
     for i in range(len(data)):
-        mfi_val = data['mfi'].iloc[i]
+        mfi_val = data['MFI'].iloc[i]
         
         if pd.isna(mfi_val):
             mfi_zone[i] = 1  # Default to neutral
@@ -54,15 +54,15 @@ def calculate_mfi_overbought_oversold(data: pd.DataFrame, overbought_level: int 
     
     # Create binary indicators
     result['mfi_zone'] = mfi_zone
-    result['mfi_overbought'] = (data['mfi'] >= overbought_level).astype(int)
-    result['mfi_oversold'] = (data['mfi'] <= oversold_level).astype(int)
-    result['mfi_neutral'] = ((data['mfi'] >= neutral_lower) & (data['mfi'] <= neutral_upper)).astype(int)
+    result['mfi_overbought'] = (data['MFI'] >= overbought_level).astype(int)
+    result['mfi_oversold'] = (data['MFI'] <= oversold_level).astype(int)
+    result['mfi_neutral'] = ((data['MFI'] >= neutral_lower) & (data['MFI'] <= neutral_upper)).astype(int)
     
     return result
 
 @IndicatorRegistry.register(
     name="MFI_DIVERGENCE",
-    inputs=["mfi", "Close"],
+    inputs=["MFI", "Close"],
     params={"lookback_period": 20},
     outputs=["mfi_price_divergence", "mfi_bullish_divergence", "mfi_bearish_divergence"]
 )
@@ -81,7 +81,7 @@ def calculate_mfi_divergence(data: pd.DataFrame, lookback_period: int = 20) -> p
         DataFrame with mfi_price_divergence, mfi_bullish_divergence, mfi_bearish_divergence columns
     """
     # Ensure required columns exist
-    required_cols = ['mfi', 'Close']
+    required_cols = ['MFI', 'Close']
     for col in required_cols:
         if col not in data.columns:
             raise ValueError(f"Required column '{col}' not found in data. Available columns: {list(data.columns)}")
@@ -90,7 +90,7 @@ def calculate_mfi_divergence(data: pd.DataFrame, lookback_period: int = 20) -> p
     result = pd.DataFrame(index=data.index)
     
     # Calculate rolling correlations between MFI and price
-    mfi_change = data['mfi'].pct_change()
+    mfi_change = data['MFI'].pct_change()
     price_change = data['Close'].pct_change()
     
     # Rolling correlation
@@ -106,7 +106,7 @@ def calculate_mfi_divergence(data: pd.DataFrame, lookback_period: int = 20) -> p
             
             # Check recent price and MFI trends
             recent_price_trend = data['Close'].iloc[i-5:i+1].pct_change().mean()
-            recent_mfi_trend = data['mfi'].iloc[i-5:i+1].pct_change().mean()
+            recent_mfi_trend = data['MFI'].iloc[i-5:i+1].pct_change().mean()
             
             # Bullish divergence: price falling, MFI rising
             if recent_price_trend < 0 and recent_mfi_trend > 0:
@@ -125,7 +125,7 @@ def calculate_mfi_divergence(data: pd.DataFrame, lookback_period: int = 20) -> p
 
 @IndicatorRegistry.register(
     name="MFI_MOMENTUM",
-    inputs=["mfi"],
+    inputs=["MFI"],
     params={"short_period": 5, "long_period": 14},
     outputs=["mfi_momentum", "mfi_acceleration", "mfi_momentum_signal"]
 )
@@ -144,15 +144,15 @@ def calculate_mfi_momentum(data: pd.DataFrame, short_period: int = 5, long_perio
     Returns:
         DataFrame with mfi_momentum, mfi_acceleration, mfi_momentum_signal columns
     """
-    # Ensure mfi column exists
-    if 'mfi' not in data.columns:
-        raise ValueError(f"Required column 'mfi' not found in data. Available columns: {list(data.columns)}")
+    # Ensure MFI column exists
+    if 'MFI' not in data.columns:
+        raise ValueError(f"Required column 'MFI' not found in data. Available columns: {list(data.columns)}")
     
     # Create result DataFrame
     result = pd.DataFrame(index=data.index)
     
     # Calculate momentum (rate of change)
-    mfi_momentum = data['mfi'].pct_change(periods=short_period)
+    mfi_momentum = data['MFI'].pct_change(periods=short_period)
     
     # Calculate acceleration (change in momentum)
     mfi_acceleration = mfi_momentum.diff()
