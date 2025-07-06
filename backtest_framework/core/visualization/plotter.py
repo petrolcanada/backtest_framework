@@ -62,61 +62,81 @@ class Plotter:
         Returns:
             Plotly Figure object with comprehensive visualization
         """
-        # Configure subplot layout with all panels reduced by 40%
-        # Original heights: [0.28, 0.16, 0.16, 0.16, 0.24]
-        # Price panel reduced by 40%: 0.28 * 0.6 = 0.168
-        # All panels reduced by 40%: [0.168, 0.096, 0.096, 0.096, 0.144]
-        # Normalized to maintain proportions: [0.22, 0.195, 0.195, 0.195, 0.195]
+        # Get available indicators to determine subplot structure
+        available_indicators = self.dynamic_indicators.get_available_visualizations()
+        indicator_panel_indicators = [viz for viz in available_indicators if viz in ['MonthlyKDJ', 'ADX', 'MFI', 'RSI']]
+        
+        # Calculate dynamic subplot structure
+        # Base panels: Price, Performance, Drawdowns, Allocation
+        base_panels = 4
+        indicator_panels = len(indicator_panel_indicators)
+        total_panels = base_panels + indicator_panels
+        
+        # Calculate heights - give indicators more space if there are many
+        if indicator_panels <= 2:
+            # Standard layout: Price gets more space
+            price_height = 0.25
+            other_height = 0.15
+            indicator_height = 0.12
+        elif indicator_panels <= 4:
+            # Balanced layout
+            price_height = 0.20
+            other_height = 0.12
+            indicator_height = 0.10
+        else:
+            # Indicator-heavy layout
+            price_height = 0.15
+            other_height = 0.10
+            indicator_height = 0.08
+        
+        # Build row heights list
+        row_heights = [price_height, other_height, other_height, other_height]  # Base panels
+        row_heights.extend([indicator_height] * indicator_panels)  # Indicator panels
+        
+        # Build subplot titles
+        subplot_titles = [
+            "",  # Price chart (title added separately)
+            "Strategy vs Benchmark Performance",
+            "Drawdowns",
+            "Capital Allocation"
+        ]
+        subplot_titles.extend([f"{indicator} Indicator" for indicator in indicator_panel_indicators])
+        
+        # Build specs
+        specs = [[{"type": "xy"}]] * total_panels
+        
+        # Configure subplot layout with better spacing for readability
         subplot_config = self.styler.get_subplot_config(
-            rows=5,
-            vertical_spacing=0.03,  # Slightly increased spacing for better separation
-            row_heights=[0.22, 0.195, 0.195, 0.195, 0.195]  # All panels reduced by ~40%
+            rows=total_panels,
+            vertical_spacing=0.03,  # Increased spacing for better separation
+            row_heights=row_heights
         )
         
-        # Create subplot structure with adjusted spacing for legend
+        # Create subplot structure WITHOUT automatic titles (we'll add custom ones)
         fig = make_subplots(
             **subplot_config,
-            subplot_titles=[
-                "",  # Price chart (title added separately)
-                "Strategy vs Benchmark Performance",
-                "Drawdowns",
-                "Capital Allocation",  # Moved next to drawdowns
-                "Technical Indicators"
-            ],
-            specs=[
-                [{"type": "xy"}],      # Price panel
-                [{"type": "xy"}],      # Performance panel
-                [{"type": "xy"}],      # Drawdowns panel
-                [{"type": "xy"}],      # Capital allocation panel (moved up)
-                [{"type": "xy"}]       # Indicators panel (moved down)
-            ]
+            subplot_titles=None,  # Don't use automatic titles
+            specs=specs
         )
         
-        # Adjust subplot positions - give more space to indicator panel for multiple indicators
-        # Price panel: 18% height, Performance: 15%, Drawdowns: 15%, Allocation: 15%, Indicators: 25%
-        fig.update_layout(
-            yaxis=dict(domain=[0.75, 0.93]),     # Price panel - 18% height
-            yaxis2=dict(domain=[0.60, 0.75]),    # Performance panel - 15% height
-            yaxis3=dict(domain=[0.45, 0.60]),    # Drawdowns panel - 15% height  
-            yaxis4=dict(domain=[0.30, 0.45]),    # Capital allocation panel - 15% height
-            yaxis5=dict(domain=[0.05, 0.30])     # Indicators panel - 25% height (increased for multiple indicators)
-        )
+        # Calculate domain positions dynamically
+        self._set_dynamic_subplot_domains(fig, row_heights)
         
-        # Style subplot titles
-        self._style_subplot_titles(fig)
+        # Add custom subplot titles and panel separators
+        self._add_custom_subplot_titles_and_separators(fig, subplot_titles, row_heights)
         
-        # Add chart content with reordered panels
+        # Add chart content
         self._build_price_panel(fig, row=1, log_scale=log_scale)
         self._build_performance_panel(fig, row=2)
         self._build_drawdown_panel(fig, row=3)
-        self._build_allocation_panel(fig, row=4)  # Moved up next to drawdowns
-        self._build_indicators_panel(fig, row=5)  # Moved down
+        self._build_allocation_panel(fig, row=4)
+        self._build_individual_indicators_panels(fig, indicator_panel_indicators, start_row=5)
         
         # Add titles and annotations
         self._add_chart_titles(fig, ticker, base_strategy_name)
         
         # Apply layout and styling
-        self._apply_layout_styling(fig, log_scale)
+        self._apply_layout_styling(fig, log_scale, total_panels)
         
         self.fig = fig
         return fig
@@ -135,6 +155,227 @@ class Plotter:
         # Add price panel indicators (like SMA) using dynamic system
         self.dynamic_indicators.apply_price_panel_indicators(fig, row=row, col=1)
     
+    def _set_dynamic_subplot_domains(self, fig: go.Figure, row_heights: list) -> None:
+        """
+        Set subplot domains dynamically based on row heights.
+        
+        Args:
+            fig: Plotly figure to update
+            row_heights: List of relative heights for each row
+        """
+        # Calculate cumulative positions from bottom up
+        total_height = sum(row_heights)
+        normalized_heights = [h / total_height for h in row_heights]
+        
+        # Calculate domains (bottom to top)
+        current_bottom = 0.05  # Start from 5% to leave margin
+        current_top = 0.95     # End at 95% to leave margin
+        
+        available_height = current_top - current_bottom
+        
+        # Calculate gap size based on number of panels (matching vertical_spacing)
+        num_panels = len(row_heights)
+        gap_size = 0.015 if num_panels > 4 else 0.02  # Increased gaps for better visual separation
+        total_gap_height = gap_size * (num_panels - 1)
+        
+        # Reduce available height by total gap space
+        usable_height = available_height - total_gap_height
+        
+        domains = []
+        current_pos = current_bottom
+        
+        for i, norm_height in enumerate(normalized_heights):
+            height = norm_height * usable_height
+            domain_bottom = current_pos
+            domain_top = current_pos + height
+            
+            # Ensure domain_top doesn't exceed 1.0
+            domain_top = min(domain_top, 0.99)
+            domain_bottom = min(domain_bottom, domain_top - 0.01)  # Ensure minimum height
+            
+            domains.append([domain_bottom, domain_top])
+            current_pos = domain_top + gap_size  # Add gap for next panel
+        
+        # Reverse domains since we want them from top to bottom
+        domains.reverse()
+        
+        # Final validation: ensure all domains are within [0, 1]
+        validated_domains = []
+        for domain in domains:
+            bottom = max(0.0, min(domain[0], 0.99))
+            top = max(bottom + 0.01, min(domain[1], 1.0))
+            validated_domains.append([bottom, top])
+        
+        # Apply domains to axes
+        axis_updates = {}
+        for i, domain in enumerate(validated_domains):
+            axis_num = i + 1
+            if axis_num == 1:
+                axis_updates['yaxis'] = dict(domain=domain)
+            else:
+                axis_updates[f'yaxis{axis_num}'] = dict(domain=domain)
+        
+        fig.update_layout(**axis_updates)
+    
+    def _add_custom_subplot_titles_and_separators(self, fig: go.Figure, subplot_titles: list, row_heights: list) -> None:
+        """
+        Add custom subplot titles positioned correctly and visual panel separators.
+        
+        Args:
+            fig: Plotly figure to update
+            subplot_titles: List of subplot titles
+            row_heights: List of relative heights for each row
+        """
+        # Calculate the same domain positions we used for axes
+        total_height = sum(row_heights)
+        normalized_heights = [h / total_height for h in row_heights]
+        
+        current_bottom = 0.05
+        current_top = 0.95
+        available_height = current_top - current_bottom
+        
+        num_panels = len(row_heights)
+        gap_size = 0.015 if num_panels > 4 else 0.02  # Match the spacing from domain calculation
+        total_gap_height = gap_size * (num_panels - 1)
+        usable_height = available_height - total_gap_height
+        
+        domains = []
+        current_pos = current_bottom
+        
+        for i, norm_height in enumerate(normalized_heights):
+            height = norm_height * usable_height
+            domain_bottom = current_pos
+            domain_top = current_pos + height
+            
+            domain_top = min(domain_top, 0.99)
+            domain_bottom = min(domain_bottom, domain_top - 0.01)
+            
+            domains.append([domain_bottom, domain_top])
+            current_pos = domain_top + gap_size
+        
+        domains.reverse()  # Reverse since we want them from top to bottom
+        
+        # Final validation
+        validated_domains = []
+        for domain in domains:
+            bottom = max(0.0, min(domain[0], 0.99))
+            top = max(bottom + 0.01, min(domain[1], 1.0))
+            validated_domains.append([bottom, top])
+        
+        # Define subtle background colors for different panel types
+        panel_colors = [
+            "rgba(25, 25, 35, 0.3)",    # Price panel - slightly blue tint
+            "rgba(35, 25, 25, 0.3)",    # Performance panel - slightly red tint  
+            "rgba(35, 30, 25, 0.3)",    # Drawdown panel - slightly orange tint
+            "rgba(25, 35, 25, 0.3)",    # Allocation panel - slightly green tint
+        ]
+        
+        # Add indicator panel colors
+        indicator_colors = ["rgba(30, 25, 35, 0.3)", "rgba(35, 35, 25, 0.3)", "rgba(25, 35, 35, 0.3)", "rgba(35, 25, 30, 0.3)"]
+        panel_colors.extend(indicator_colors * ((len(validated_domains) - 4) // len(indicator_colors) + 1))
+        
+        # Add subplot titles positioned correctly within each domain
+        for i, (title, domain) in enumerate(zip(subplot_titles, validated_domains)):
+            domain_bottom, domain_top = domain
+            
+            # Add subtle panel background for distinction
+            if i < len(panel_colors):
+                fig.add_shape(
+                    type="rect",
+                    x0=0, x1=1,
+                    y0=domain_bottom, y1=domain_top,
+                    xref="paper", yref="paper",
+                    fillcolor=panel_colors[i],
+                    line=dict(color="rgba(60, 60, 60, 0.4)", width=0.5),
+                    layer="below"
+                )
+            
+            if title:  # Skip empty titles
+                # Position title at the top-left of each panel
+                title_y = domain_top - 0.015  # Slightly closer to top since no background
+                
+                fig.add_annotation(
+                    text=f"<b>{title}</b>",
+                    x=0.02, y=title_y,
+                    xref="paper", yref="paper",
+                    showarrow=False,
+                    font=dict(size=11, color="white", family="Arial"),
+                    align="left",
+                    bgcolor="rgba(0, 0, 0, 0)",  # Fully transparent background
+                )
+        
+        # Add horizontal separators between panels
+        for i in range(len(validated_domains) - 1):
+            separator_y = validated_domains[i][0] - gap_size/2  # Middle of the gap
+            fig.add_shape(
+                type="line",
+                x0=0, x1=1,
+                y0=separator_y, y1=separator_y,
+                xref="paper", yref="paper",
+                line=dict(color="rgba(100, 100, 100, 0.6)", width=1, dash="dot")
+            )
+    
+    def _build_individual_indicators_panels(self, fig: go.Figure, indicators: list, start_row: int) -> None:
+        """
+        Build individual indicator panels, one per indicator.
+        
+        Args:
+            fig: Plotly figure to add indicators to
+            indicators: List of indicator names to add
+            start_row: Starting row number for indicators
+        """
+        # Map indicators to their visualization classes
+        indicator_map = {
+            'MonthlyKDJ': 'MonthlyKDJ',
+            'ADX': 'ADX',
+            'MFI': 'MFI', 
+            'RSI': 'RSI'
+        }
+        
+        for i, indicator in enumerate(indicators):
+            row = start_row + i
+            
+            # Get the specific visualization class
+            if indicator in indicator_map:
+                viz_class_name = indicator_map[indicator]
+                
+                # Get the visualization class and apply it
+                viz_registry = self.dynamic_indicators._visualization_registry
+                if viz_class_name in viz_registry:
+                    viz_class = viz_registry[viz_class_name]
+                    viz_instance = viz_class(self.dynamic_indicators.data)
+                    
+                    if viz_instance.check_data_availability():
+                        fig, success = viz_instance.add_to_chart(fig, row=row, col=1)
+                        
+                        if not success:
+                            # Add placeholder if indicator failed to render
+                            fig.add_annotation(
+                                x=0.5, y=0.5,
+                                xref=f"x{row} domain", yref=f"y{row} domain",
+                                text=f"{indicator} data not available",
+                                showarrow=False,
+                                font=dict(size=12, color="gray")
+                            )
+                    else:
+                        # Add placeholder for missing data
+                        fig.add_annotation(
+                            x=0.5, y=0.5,
+                            xref=f"x{row} domain", yref=f"y{row} domain",
+                            text=f"{indicator} data not available",
+                            showarrow=False,
+                            font=dict(size=12, color="gray")
+                        )
+                else:
+                    # Add placeholder for missing visualization class
+                    fig.add_annotation(
+                        x=0.5, y=0.5,
+                        xref=f"x{row} domain", yref=f"y{row} domain",
+                        text=f"{indicator} visualization not implemented",
+                        showarrow=False,
+                        font=dict(size=12, color="gray")
+                    )
+    
     def _build_performance_panel(self, fig: go.Figure, row: int) -> None:
         """Build the performance comparison panel."""
         self.performance.add_performance_comparison(fig, row=row, col=1)
@@ -142,24 +383,6 @@ class Plotter:
     def _build_drawdown_panel(self, fig: go.Figure, row: int) -> None:
         """Build the drawdown comparison panel."""
         self.performance.add_drawdown_comparison(fig, row=row, col=1)
-    
-    def _build_indicators_panel(self, fig: go.Figure, row: int) -> None:
-        """Build the technical indicators panel using dynamic indicator system."""
-        # Use the dynamic indicator coordinator to automatically detect and apply indicator panel indicators
-        fig, success = self.dynamic_indicators.apply_indicator_panel_indicators(fig, row=row, col=1)
-        
-        if not success:
-            # Get debug info for troubleshooting
-            debug_info = self.dynamic_indicators.get_debug_info()
-            
-            # Add placeholder with debug information
-            fig.add_annotation(
-                x=0.5, y=0.5,
-                xref=f"x{row} domain", yref=f"y{row} domain",
-                text=f"No indicators available<br>Computed: {debug_info['computed_indicators']}<br>Available viz: {debug_info['available_visualizations']}",
-                showarrow=False,
-                font=dict(size=12, color="gray")
-            )
     
     def _build_allocation_panel(self, fig: go.Figure, row: int) -> None:
         """Build the capital allocation panel."""
@@ -226,13 +449,13 @@ class Plotter:
                 )
             )
     
-    def _apply_layout_styling(self, fig: go.Figure, log_scale: bool) -> None:
+    def _apply_layout_styling(self, fig: go.Figure, log_scale: bool, total_panels: int) -> None:
         """Apply comprehensive layout and styling to the figure."""
-        # Get base layout configuration with minimal top margin for titles
+        # Get base layout configuration with increased height for better spacing
         layout_config = self.styler.get_dark_theme_layout(
-            height=1200,
+            height=1400 + (total_panels - 5) * 120,  # Increased height for better panel separation
             width=1600,
-            top_margin=30  # Minimal margin to reduce wasted space
+            top_margin=40  # Slightly more margin for titles
         )
         
         # Configure x-axes for all subplots
@@ -252,27 +475,40 @@ class Plotter:
         # Configure y-axes for each panel
         scale_type = "log" if log_scale else "linear"
         
-        axis_configs = {
-            'xaxis': {**x_axis_config, 'title': "", 'matches': 'x'},
-            'xaxis2': {**x_axis_config, 'title': "", 'matches': 'x'},
-            'xaxis3': {**x_axis_config, 'title': "", 'matches': 'x'},
-            'xaxis4': {**x_axis_config, 'title': "", 'matches': 'x'},
-            'xaxis5': {**x_axis_config, 'title': "Date", 'matches': 'x'},
-            
-            'yaxis': self.styler.get_axis_config("Price", scale_type, "right"),
-            'yaxis2': self.styler.get_axis_config("Performance (%)", "linear", "right"),
-            'yaxis3': self.styler.get_axis_config("Drawdown (%)", "linear", "right"),
-            'yaxis4': self.styler.get_axis_config("Capital ($)", "linear", "right"),  # Capital allocation moved to row 4
-            'yaxis5': self.styler.get_axis_config("Indicator Values", "linear", "right")   # Indicators moved to row 5
-        }
+        # Build axis configurations dynamically
+        axis_configs = {}
+        
+        # X-axes configuration
+        for i in range(1, total_panels + 1):
+            if i == 1:
+                axis_configs['xaxis'] = {**x_axis_config, 'title': "", 'matches': 'x'}
+            elif i == total_panels:  # Last panel gets the date label
+                axis_configs[f'xaxis{i}'] = {**x_axis_config, 'title': "Date", 'matches': 'x'}
+            else:
+                axis_configs[f'xaxis{i}'] = {**x_axis_config, 'title': "", 'matches': 'x'}
+        
+        # Y-axes configuration
+        y_axis_labels = [
+            ("Price", scale_type),
+            ("Performance (%)", "linear"),
+            ("Drawdown (%)", "linear"),
+            ("Capital ($)", "linear")
+        ]
+        
+        # Add indicator labels for remaining panels
+        for i in range(4, total_panels):
+            y_axis_labels.append(("Indicator Values", "linear"))
+        
+        # Apply y-axis configurations
+        for i, (label, scale) in enumerate(y_axis_labels):
+            axis_num = i + 1
+            if axis_num == 1:
+                axis_configs['yaxis'] = self.styler.get_axis_config(label, scale, "right")
+            else:
+                axis_configs[f'yaxis{axis_num}'] = self.styler.get_axis_config(label, scale, "right")
         
         # Apply all configurations
         fig.update_layout(**layout_config, **axis_configs, title="")
-    
-    def _style_subplot_titles(self, fig: go.Figure) -> None:
-        """Apply styling to subplot titles."""
-        for annotation in fig['layout']['annotations']:
-            annotation['font'] = dict(size=14, color='white', family='Arial')
     
     # Convenience methods for backward compatibility
     def plot_chart_with_benchmark(self, ticker: str = '', base_strategy_name: str = "Monthly KDJ", 
