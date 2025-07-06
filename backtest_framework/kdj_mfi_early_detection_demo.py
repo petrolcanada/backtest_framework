@@ -45,7 +45,7 @@ def main():
         data_dir = os.path.join(os.path.expanduser("~"), "local_script", 
                                "Local Technical Indicator Data", "security_data")
         loader = DataLoader(data_dir=data_dir)
-        data = loader.load(ticker, period="10y", resample_period="D")
+        data = loader.load(ticker, period="3y", resample_period="D")
         print(f"Loaded {len(data)} rows of data from {data.index[0].strftime('%Y-%m-%d')} to {data.index[-1].strftime('%Y-%m-%d')}")
         
         # 2. Initialize strategy with parameters

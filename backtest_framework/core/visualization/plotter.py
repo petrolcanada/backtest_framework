@@ -60,11 +60,15 @@ class Plotter:
         Returns:
             Plotly Figure object with comprehensive visualization
         """
-        # Configure subplot layout
+        # Configure subplot layout with all panels reduced by 40%
+        # Original heights: [0.28, 0.16, 0.16, 0.16, 0.24]
+        # Price panel reduced by 40%: 0.28 * 0.6 = 0.168
+        # All panels reduced by 40%: [0.168, 0.096, 0.096, 0.096, 0.144]
+        # Normalized to maintain proportions: [0.22, 0.195, 0.195, 0.195, 0.195]
         subplot_config = self.styler.get_subplot_config(
             rows=5,
-            vertical_spacing=0.02,
-            row_heights=[0.28, 0.16, 0.16, 0.16, 0.24]
+            vertical_spacing=0.03,  # Slightly increased spacing for better separation
+            row_heights=[0.22, 0.195, 0.195, 0.195, 0.195]  # All panels reduced by ~40%
         )
         
         # Create subplot structure with adjusted spacing for legend
@@ -74,37 +78,37 @@ class Plotter:
                 "",  # Price chart (title added separately)
                 "Strategy vs Benchmark Performance",
                 "Drawdowns",
-                "Technical Indicators", 
-                "Capital Allocation"
+                "Capital Allocation",  # Moved next to drawdowns
+                "Technical Indicators"
             ],
             specs=[
                 [{"type": "xy"}],      # Price panel
                 [{"type": "xy"}],      # Performance panel
                 [{"type": "xy"}],      # Drawdowns panel
-                [{"type": "xy"}],      # Indicators panel
-                [{"type": "xy"}]       # Capital allocation panel
+                [{"type": "xy"}],      # Capital allocation panel (moved up)
+                [{"type": "xy"}]       # Indicators panel (moved down)
             ]
         )
         
-        # Adjust subplot positions with legend at bottom
-        # Maximum space for candles with legend at bottom
+        # Adjust subplot positions with perfectly equal heights for all sub-panels
+        # Price panel: 21% height, All sub-panels: exactly 15% height each with 3% spacing
         fig.update_layout(
-            yaxis=dict(domain=[0.70, 0.94]),     # Price panel - slightly lower top to avoid title overlap
-            yaxis2=dict(domain=[0.55, 0.70]),    # Performance panel
-            yaxis3=dict(domain=[0.40, 0.55]),    # Drawdowns panel  
-            yaxis4=dict(domain=[0.25, 0.40]),    # Indicators panel
-            yaxis5=dict(domain=[0.05, 0.25])     # Capital allocation panel - adjusted for reduced legend spacing
+            yaxis=dict(domain=[0.73, 0.94]),     # Price panel - 21% height
+            yaxis2=dict(domain=[0.58, 0.73]),    # Performance panel - 15% height
+            yaxis3=dict(domain=[0.43, 0.58]),    # Drawdowns panel - 15% height  
+            yaxis4=dict(domain=[0.28, 0.43]),    # Capital allocation panel - 15% height
+            yaxis5=dict(domain=[0.13, 0.28])     # Indicators panel - 15% height (same as others)
         )
         
         # Style subplot titles
         self._style_subplot_titles(fig)
         
-        # Add chart content
+        # Add chart content with reordered panels
         self._build_price_panel(fig, row=1, log_scale=log_scale)
         self._build_performance_panel(fig, row=2)
         self._build_drawdown_panel(fig, row=3)
-        self._build_indicators_panel(fig, row=4)
-        self._build_allocation_panel(fig, row=5)
+        self._build_allocation_panel(fig, row=4)  # Moved up next to drawdowns
+        self._build_indicators_panel(fig, row=5)  # Moved down
         
         # Add titles and annotations
         self._add_chart_titles(fig, ticker, base_strategy_name)
@@ -263,8 +267,8 @@ class Plotter:
             'yaxis': self.styler.get_axis_config("Price", scale_type, "right"),
             'yaxis2': self.styler.get_axis_config("Performance (%)", "linear", "right"),
             'yaxis3': self.styler.get_axis_config("Drawdown (%)", "linear", "right"),
-            'yaxis4': self.styler.get_axis_config("KDJ Values", "linear", "right"),
-            'yaxis5': self.styler.get_axis_config("Capital ($)", "linear", "right")
+            'yaxis4': self.styler.get_axis_config("Capital ($)", "linear", "right"),  # Capital allocation moved to row 4
+            'yaxis5': self.styler.get_axis_config("KDJ Values", "linear", "right")   # Indicators moved to row 5
         }
         
         # Apply all configurations
