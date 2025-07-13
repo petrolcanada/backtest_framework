@@ -9,8 +9,21 @@ from backtest_framework.core.indicators.calculator import IndicatorCalculator
 
 class BaseStrategy(ABC):
     """
-    Abstract base class for all trading strategies.
+    Abstract base class for all trading strategies with indicator parameter support.
     """
+    
+    def __init__(self, indicator_params: Optional[Dict[str, Dict[str, Any]]] = None):
+        """
+        Initialize the strategy with optional indicator parameter overrides.
+        
+        Args:
+            indicator_params: Dictionary mapping indicator names to their parameter overrides
+                            Example: {
+                                "ADX": {"window": 14, "sma_length": 3},
+                                "ADX_CONSECUTIVE_DOWN": {"required_days": 7}
+                            }
+        """
+        self.indicator_params = indicator_params or {}
     
     @property
     @abstractmethod
@@ -33,9 +46,43 @@ class BaseStrategy(ABC):
         """
         return self.__class__.__name__
     
+    def set_indicator_params(self, indicator_name: str, **params) -> None:
+        """
+        Set parameters for a specific indicator.
+        
+        Args:
+            indicator_name: Name of the indicator
+            **params: Parameter key-value pairs to set
+        """
+        if indicator_name not in self.indicator_params:
+            self.indicator_params[indicator_name] = {}
+        self.indicator_params[indicator_name].update(params)
+    
+    def get_indicator_params(self, indicator_name: str) -> Dict[str, Any]:
+        """
+        Get parameter overrides for a specific indicator.
+        
+        Args:
+            indicator_name: Name of the indicator
+            
+        Returns:
+            Dictionary of parameter overrides for the indicator
+        """
+        return self.indicator_params.get(indicator_name, {})
+    
+    def update_indicator_params(self, params_dict: Dict[str, Dict[str, Any]]) -> None:
+        """
+        Update indicator parameters with a dictionary.
+        
+        Args:
+            params_dict: Dictionary mapping indicator names to parameter dictionaries
+        """
+        for indicator_name, params in params_dict.items():
+            self.set_indicator_params(indicator_name, **params)
+    
     def prepare_data(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        Prepare data for the strategy by computing required indicators.
+        Prepare data for the strategy by computing required indicators with custom parameters.
         
         Args:
             data: DataFrame with OHLCV data
@@ -59,9 +106,13 @@ class BaseStrategy(ABC):
                 all_indicators_present = False
                 break
                 
-        # Only compute if needed
+        # Only compute if needed, passing custom parameters
         if not all_indicators_present:
-            return IndicatorCalculator.compute(data, self.required_indicators)
+            return IndicatorCalculator.compute(
+                data, 
+                self.required_indicators, 
+                override_params=self.indicator_params
+            )
         else:
             return data
     
@@ -88,8 +139,46 @@ class BaseStrategy(ABC):
         Returns:
             DataFrame with computed indicators and signals
         """
-        # Ensure all required indicators are computed
+        # Ensure all required indicators are computed with custom parameters
         data = self.prepare_data(data)
         
         # Generate signals
         return self.generate_signals(data)
+    
+    def get_strategy_info(self) -> Dict[str, Any]:
+        """
+        Get comprehensive information about the strategy including indicator parameters.
+        
+        Returns:
+            Dictionary with strategy information
+        """
+        from backtest_framework.core.indicators.registry import IndicatorRegistry
+        
+        info = {
+            "name": self.name,
+            "required_indicators": self.required_indicators,
+            "indicator_params": self.indicator_params,
+            "indicator_details": {}
+        }
+        
+        # Add details about each required indicator
+        for indicator in self.required_indicators:
+            try:
+                indicator_info = IndicatorRegistry.get(indicator)
+                default_params = indicator_info.get('params', {})
+                custom_params = self.get_indicator_params(indicator)
+                final_params = {**default_params, **custom_params}
+                
+                info["indicator_details"][indicator] = {
+                    "default_params": default_params,
+                    "custom_params": custom_params,
+                    "final_params": final_params,
+                    "inputs": indicator_info.get('inputs', []),
+                    "outputs": indicator_info.get('outputs', [])
+                }
+            except KeyError:
+                info["indicator_details"][indicator] = {
+                    "error": "Indicator not found in registry"
+                }
+        
+        return info

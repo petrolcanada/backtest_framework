@@ -48,14 +48,22 @@ def main():
         data = loader.load(ticker, period="3y", resample_period="D")
         print(f"Loaded {len(data)} rows of data from {data.index[0].strftime('%Y-%m-%d')} to {data.index[-1].strftime('%Y-%m-%d')}")
         
-        # 2. Initialize strategy with parameters
+        # 2. Initialize strategy with parameters (including custom indicator parameters)
         print("\nInitializing KDJ MFI Early Detection strategy...")
         strategy = KDJMFIEarlyDetectionStrategy(
+            # Strategy parameters
             required_up_days=7,              # J must rise for 7 days
             required_down_days=4,            # For flip detection
             required_adx_down_days=5,        # ADX down requirement  
             max_buy_signals_per_cross=2,     # Max 2 buys per golden cross
-            enable_death_cross_buys=False    # Disable alternative buys initially
+            enable_death_cross_buys=False,   # Disable alternative buys initially
+            
+            # Custom indicator parameters - override defaults
+            adx_window=14,                   # Override default ADX window (was 308)
+            adx_sma_length=3,                # Override default ADX SMA length (was 5)
+            # kdj_window=9,                  # Uncomment to override KDJ window
+            # mfi_window=14,                 # Uncomment to override MFI window
+            # rsi_window=14,                 # Uncomment to override RSI window
         )
         
         print(f"Strategy Configuration:")
@@ -64,6 +72,10 @@ def main():
         print(f"  • ADX down days: {strategy.required_adx_down_days}")
         print(f"  • Death cross buys: {'Enabled' if strategy.enable_death_cross_buys else 'Disabled'}")
         print(f"  • Required indicators: {len(strategy.required_indicators)}")
+        
+        # Print detailed indicator configuration
+        print("\n📊 Indicator Parameter Configuration:")
+        strategy.print_indicator_config()
         
         # 3. Setup backtest engine with configuration
         print("Setting up backtest engine...")
@@ -156,7 +168,29 @@ def main():
         print(f"Short Periods: {short_periods} days ({short_periods/total_periods*100:.1f}%)")
         print(f"Cash Periods: {total_periods - long_periods - short_periods} days ({(total_periods - long_periods - short_periods)/total_periods*100:.1f}%)")
         
-        # 6. Demonstrate Dynamic Indicator System
+        # 6. Demonstrate Dynamic Parameter Adjustment
+        print("\n🔧 Dynamic Parameter Adjustment Demo:")
+        print("=" * 50)
+        
+        # Show current ADX parameters
+        current_adx_params = strategy.get_indicator_params('ADX')
+        print(f"Current ADX parameters: {current_adx_params}")
+        
+        # Demonstrate parameter adjustment (for next run)
+        print("\nTo adjust parameters for next run:")
+        print("strategy.set_adx_params(window=21, sma_length=7, consecutive_down_days=3)")
+        print("strategy.set_kdj_params(window=14, required_up_days=5)")
+        
+        # Alternative: full parameter dictionary approach
+        print("\nAlternative - full parameter override:")
+        print("custom_params = {")
+        print("    'ADX': {'window': 21, 'sma_length': 7},")
+        print("    'MONTHLY_KDJ': {'window': 14},")
+        print("    'MFI': {'window': 20}")
+        print("}")
+        print("strategy.update_indicator_params(custom_params)")
+        
+        # 7. Demonstrate Dynamic Indicator System
         print("\n🔍 Dynamic Indicator System Demo:")
         print("=" * 50)
         
@@ -182,7 +216,7 @@ def main():
         print(f"📋 Total Registered Indicators: {len(debug_info['registered_indicators'])}")
         print(f"🏗️  Visualization Registry: {debug_info['visualization_registry']}")
         
-        # 7. Create visualization
+        # 8. Create visualization
         print("\nGenerating visualization...")
         output_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output")
         os.makedirs(output_dir, exist_ok=True)
@@ -206,7 +240,7 @@ def main():
         # Open chart in browser
         plotter.open_in_browser(output_file)
         
-        # 8. Strategy insights and recommendations
+        # 9. Strategy insights and recommendations
         print(f"\n💡 Strategy Insights:")
         
         # Signal efficiency
