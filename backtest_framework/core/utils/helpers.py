@@ -108,3 +108,43 @@ def format_percentage(value: float, precision: int = 2) -> str:
         return "N/A"
     
     return f"{value * 100:.{precision}f}%"
+
+# Parameter handling utilities
+def clean_params(**kwargs) -> Dict[str, Any]:
+    """
+    Build parameter dictionary, filtering out None values.
+    
+    This utility function is commonly used in strategy constructors to build
+    clean parameter dictionaries for indicator configuration, removing any
+    parameters that are None.
+    
+    Args:
+        **kwargs: Parameter key-value pairs
+        
+    Returns:
+        Dictionary with non-None values only
+        
+    Example:
+        >>> clean_params(window=14, period=None, threshold=0.5)
+        {'window': 14, 'threshold': 0.5}
+    """
+    return {k: v for k, v in kwargs.items() if v is not None}
+
+def filter_empty_dicts(params_dict: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+    """
+    Filter out empty dictionaries from a nested parameter dictionary.
+    
+    This is useful for removing indicators that have no parameter overrides,
+    keeping the configuration clean.
+    
+    Args:
+        params_dict: Dictionary mapping names to parameter dictionaries
+        
+    Returns:
+        Dictionary with empty parameter dictionaries removed
+        
+    Example:
+        >>> filter_empty_dicts({'ADX': {'window': 14}, 'RSI': {}, 'MFI': {'period': 20}})
+        {'ADX': {'window': 14}, 'MFI': {'period': 20}}
+    """
+    return {k: v for k, v in params_dict.items() if v}

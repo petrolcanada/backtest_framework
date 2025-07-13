@@ -1,10 +1,11 @@
 """
 Enhanced KDJ MFI Early Detection strategy with indicator parameter support.
 """
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 import pandas as pd
 import numpy as np
 from backtest_framework.core.strategies.base import BaseStrategy
+from backtest_framework.core.utils.helpers import clean_params, filter_empty_dicts
 
 class KDJMFIEarlyDetectionStrategy(BaseStrategy):
     """
@@ -36,17 +37,13 @@ class KDJMFIEarlyDetectionStrategy(BaseStrategy):
                  max_buy_signals_per_cross: int = 2,  # Limit signals per golden cross
                  enable_death_cross_buys: bool = False, # Alt buy during death cross
                  
-                 # Indicator parameter overrides
-                 adx_window: Optional[int] = None,        # ADX calculation window
-                 adx_sma_length: Optional[int] = None,    # ADX SMA smoothing length
-                 kdj_window: Optional[int] = None,        # KDJ calculation window
-                 kdj_k_period: Optional[int] = None,      # KDJ K period
-                 kdj_d_period: Optional[int] = None,      # KDJ D period
-                 mfi_window: Optional[int] = None,        # MFI calculation window
-                 rsi_window: Optional[int] = None,        # RSI calculation window
-                 
-                 # Custom indicator parameters (full override)
-                 indicator_params: Optional[Dict[str, Dict[str, Any]]] = None):
+                 # Indicator parameter overrides (fully standardized to use 'period')
+                 adx_period: int = 308,                   # ADX calculation period (default: ~14 months)
+                 adx_sma_period: int = 5,                 # ADX SMA smoothing period
+                 kdj_period: int = 198,                   # KDJ lookback period (default: 9 months * 22 days)
+                 kdj_signal: int = 66,                    # KDJ signal period (default: 3 months * 22 days)
+                 mfi_period: int = 48,                    # MFI calculation period (default: ~2.2 months)
+                 rsi_period: int = 14):                   # RSI calculation period
         
         # Initialize strategy parameters
         self.required_up_days = required_up_days
@@ -55,61 +52,22 @@ class KDJMFIEarlyDetectionStrategy(BaseStrategy):
         self.max_buy_signals_per_cross = max_buy_signals_per_cross
         self.enable_death_cross_buys = enable_death_cross_buys
         
-        # Build indicator parameter overrides
-        indicator_overrides = {}
-        
-        # ADX parameters
-        if adx_window is not None or adx_sma_length is not None:
-            adx_params = {}
-            if adx_window is not None:
-                adx_params['window'] = adx_window
-            if adx_sma_length is not None:
-                adx_params['sma_length'] = adx_sma_length
-            indicator_overrides['ADX'] = adx_params
-        
-        # ADX consecutive down parameters (sync with strategy parameter)
-        indicator_overrides['ADX_CONSECUTIVE_DOWN'] = {
-            'required_days': self.required_adx_down_days
+        # Build indicator parameter overrides in a single dictionary
+        indicator_overrides = {
+            # Core indicator parameters (fully standardized to use 'period')
+            'ADX': clean_params(period=adx_period, sma_period=adx_sma_period),
+            'MONTHLY_KDJ': clean_params(period=kdj_period, signal=kdj_signal),
+            'MFI': clean_params(period=mfi_period),
+            'RSI': clean_params(period=rsi_period),
+            
+            # Strategy-derived indicator parameters
+            'ADX_CONSECUTIVE_DOWN': {'required_days': self.required_adx_down_days},
+            'KDJ_CONSECUTIVE_DAYS': {'up_days': self.required_up_days, 'down_days': self.required_down_days},
+            'BUY_SIGNAL_COUNTER': {'max_signals_per_cross': self.max_buy_signals_per_cross}
         }
         
-        # KDJ parameters
-        if kdj_window is not None or kdj_k_period is not None or kdj_d_period is not None:
-            kdj_params = {}
-            if kdj_window is not None:
-                kdj_params['window'] = kdj_window
-            if kdj_k_period is not None:
-                kdj_params['k_period'] = kdj_k_period
-            if kdj_d_period is not None:
-                kdj_params['d_period'] = kdj_d_period
-            indicator_overrides['MONTHLY_KDJ'] = kdj_params
-            indicator_overrides['MONTHLY_KDJ_SLOPES'] = kdj_params
-        
-        # KDJ consecutive days parameters (sync with strategy parameters)
-        indicator_overrides['KDJ_CONSECUTIVE_DAYS'] = {
-            'up_days': self.required_up_days,
-            'down_days': self.required_down_days
-        }
-        
-        # Buy signal counter parameters (sync with strategy parameter)
-        indicator_overrides['BUY_SIGNAL_COUNTER'] = {
-            'max_signals_per_cross': self.max_buy_signals_per_cross
-        }
-        
-        # MFI parameters
-        if mfi_window is not None:
-            indicator_overrides['MFI'] = {'window': mfi_window}
-        
-        # RSI parameters
-        if rsi_window is not None:
-            indicator_overrides['RSI'] = {'window': rsi_window}
-        
-        # Merge with custom indicator parameters if provided
-        if indicator_params:
-            for indicator, params in indicator_params.items():
-                if indicator in indicator_overrides:
-                    indicator_overrides[indicator].update(params)
-                else:
-                    indicator_overrides[indicator] = params
+        # Filter out any empty parameter dictionaries
+        indicator_overrides = filter_empty_dicts(indicator_overrides)
         
         # Initialize base strategy with indicator parameters
         super().__init__(indicator_params=indicator_overrides)
@@ -132,85 +90,43 @@ class KDJMFIEarlyDetectionStrategy(BaseStrategy):
             "ADX_CONSECUTIVE_DOWN"       # adx_down_condition_met
         ]
     
-    def set_adx_params(self, window: Optional[int] = None, sma_length: Optional[int] = None, 
-                       consecutive_down_days: Optional[int] = None) -> None:
+    def set_strategy_specific_params(self, required_up_days: int = None, 
+                                   required_down_days: int = None,
+                                   required_adx_down_days: int = None,
+                                   max_buy_signals_per_cross: int = None) -> None:
         """
-        Convenience method to set ADX-related parameters.
+        Set strategy-specific parameters that affect derived indicators.
         
         Args:
-            window: ADX calculation window
-            sma_length: ADX SMA smoothing length  
-            consecutive_down_days: Required consecutive down days for ADX condition
-        """
-        if window is not None or sma_length is not None:
-            adx_params = self.get_indicator_params('ADX')
-            if window is not None:
-                adx_params['window'] = window
-            if sma_length is not None:
-                adx_params['sma_length'] = sma_length
-            self.set_indicator_params('ADX', **adx_params)
-        
-        if consecutive_down_days is not None:
-            self.required_adx_down_days = consecutive_down_days
-            self.set_indicator_params('ADX_CONSECUTIVE_DOWN', required_days=consecutive_down_days)
-    
-    def set_kdj_params(self, window: Optional[int] = None, k_period: Optional[int] = None, 
-                       d_period: Optional[int] = None, required_up_days: Optional[int] = None,
-                       required_down_days: Optional[int] = None) -> None:
-        """
-        Convenience method to set KDJ-related parameters.
-        
-        Args:
-            window: KDJ calculation window
-            k_period: KDJ K smoothing period
-            d_period: KDJ D smoothing period
             required_up_days: Required consecutive up days for J momentum
             required_down_days: Required down days for flip detection
+            required_adx_down_days: Required consecutive down days for ADX condition
+            max_buy_signals_per_cross: Maximum buy signals per golden cross
         """
-        if window is not None or k_period is not None or d_period is not None:
-            kdj_params = {}
-            if window is not None:
-                kdj_params['window'] = window
-            if k_period is not None:
-                kdj_params['k_period'] = k_period
-            if d_period is not None:
-                kdj_params['d_period'] = d_period
-            
-            # Apply to both KDJ indicators
-            self.set_indicator_params('MONTHLY_KDJ', **kdj_params)
-            self.set_indicator_params('MONTHLY_KDJ_SLOPES', **kdj_params)
+        # Update strategy parameters
+        if required_up_days is not None:
+            self.required_up_days = required_up_days
+        if required_down_days is not None:
+            self.required_down_days = required_down_days
+        if required_adx_down_days is not None:
+            self.required_adx_down_days = required_adx_down_days
+        if max_buy_signals_per_cross is not None:
+            self.max_buy_signals_per_cross = max_buy_signals_per_cross
         
+        # Update derived indicator parameters
         if required_up_days is not None or required_down_days is not None:
-            consecutive_params = self.get_indicator_params('KDJ_CONSECUTIVE_DAYS')
+            kdj_consecutive_params = {}
             if required_up_days is not None:
-                self.required_up_days = required_up_days
-                consecutive_params['up_days'] = required_up_days
+                kdj_consecutive_params['up_days'] = required_up_days
             if required_down_days is not None:
-                self.required_down_days = required_down_days
-                consecutive_params['down_days'] = required_down_days
-            self.set_indicator_params('KDJ_CONSECUTIVE_DAYS', **consecutive_params)
-    
-    def print_indicator_config(self) -> None:
-        """Print current indicator configuration for debugging."""
-        info = self.get_strategy_info()
+                kdj_consecutive_params['down_days'] = required_down_days
+            self.set_indicator_params('KDJ_CONSECUTIVE_DAYS', **kdj_consecutive_params)
         
-        print("Strategy Indicator Configuration:")
-        print("=" * 50)
-        print(f"Strategy: {info['name']}")
-        print(f"Required Indicators: {len(info['required_indicators'])}")
+        if required_adx_down_days is not None:
+            self.set_indicator_params('ADX_CONSECUTIVE_DOWN', required_days=required_adx_down_days)
         
-        for indicator in info['required_indicators']:
-            if indicator in info['indicator_details']:
-                details = info['indicator_details'][indicator]
-                print(f"\n{indicator}:")
-                if 'error' in details:
-                    print(f"  Error: {details['error']}")
-                else:
-                    print(f"  Default params: {details['default_params']}")
-                    if details['custom_params']:
-                        print(f"  Custom params:  {details['custom_params']}")
-                    print(f"  Final params:   {details['final_params']}")
-                    print(f"  Outputs: {details['outputs']}")
+        if max_buy_signals_per_cross is not None:
+            self.set_indicator_params('BUY_SIGNAL_COUNTER', max_signals_per_cross=max_buy_signals_per_cross)
     
     def generate_signals(self, data: pd.DataFrame) -> pd.DataFrame:
         """

@@ -80,6 +80,29 @@ class BaseStrategy(ABC):
         for indicator_name, params in params_dict.items():
             self.set_indicator_params(indicator_name, **params)
     
+    def print_indicator_config(self) -> None:
+        """
+        Universal method to print current indicator configuration for debugging.
+        """
+        info = self.get_strategy_info()
+        
+        print("Strategy Indicator Configuration:")
+        print("=" * 50)
+        print(f"Strategy: {info['name']}")
+        print(f"Required Indicators: {len(info['required_indicators'])}")
+        
+        for indicator in info['required_indicators']:
+            if indicator in info['indicator_details']:
+                details = info['indicator_details'][indicator]
+                print(f"\n{indicator}:")
+                if 'error' in details:
+                    print(f"  Error: {details['error']}")
+                else:
+                    print(f"  Default params: {details['default_params']}")
+                    if details['custom_params']:
+                        print(f"  Custom params:  {details['custom_params']}")
+                    print(f"  Final params:   {details['final_params']}")
+                    print(f"  Outputs: {details['outputs']}")
     def prepare_data(self, data: pd.DataFrame) -> pd.DataFrame:
         """
         Prepare data for the strategy by computing required indicators with custom parameters.

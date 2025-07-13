@@ -8,11 +8,11 @@ from backtest_framework.core.indicators.registry import IndicatorRegistry
 @IndicatorRegistry.register(
     name="MFI",
     inputs=["High", "Low", "Close", "Volume"],
-    params={"length": 48},
+    params={"period": 48},
     outputs=["MFI"],
     visualization_class="MFI"
 )
-def calculate_mfi(data: pd.DataFrame, length: int = 48) -> pd.DataFrame:
+def calculate_mfi(data: pd.DataFrame, period: int = 48) -> pd.DataFrame:
     """
     Calculate MFI (Money Flow Index) indicator.
     
@@ -23,7 +23,7 @@ def calculate_mfi(data: pd.DataFrame, length: int = 48) -> pd.DataFrame:
     
     Args:
         data: DataFrame with High, Low, Close, Volume columns
-        length: Lookback period for MFI calculation (default: 48 ≈ 2.2 months)
+        period: Lookback period for MFI calculation (default: 48 ≈ 2.2 months)
         
     Returns:
         DataFrame with mfi column
@@ -40,7 +40,7 @@ def calculate_mfi(data: pd.DataFrame, length: int = 48) -> pd.DataFrame:
         low=data['Low'], 
         close=data['Close'], 
         volume=data['Volume'], 
-        length=length
+        length=period
     )
     
     # Create result DataFrame
@@ -57,10 +57,10 @@ def calculate_mfi(data: pd.DataFrame, length: int = 48) -> pd.DataFrame:
 @IndicatorRegistry.register(
     name="MFI_MULTI_TIMEFRAME",
     inputs=["High", "Low", "Close", "Volume"],
-    params={"short_length": 14, "long_length": 48},
+    params={"short_period": 14, "long_period": 48},
     outputs=["mfi_short", "mfi_long", "mfi_ratio"]
 )
-def calculate_mfi_multi_timeframe(data: pd.DataFrame, short_length: int = 14, long_length: int = 48) -> pd.DataFrame:
+def calculate_mfi_multi_timeframe(data: pd.DataFrame, short_period: int = 14, long_period: int = 48) -> pd.DataFrame:
     """
     Calculate MFI for multiple timeframes and their ratio.
     
@@ -69,8 +69,8 @@ def calculate_mfi_multi_timeframe(data: pd.DataFrame, short_length: int = 14, lo
     
     Args:
         data: DataFrame with High, Low, Close, Volume columns
-        short_length: Short-term MFI period (default: 14)
-        long_length: Long-term MFI period (default: 48)
+        short_period: Short-term MFI period (default: 14)
+        long_period: Long-term MFI period (default: 48)
         
     Returns:
         DataFrame with mfi_short, mfi_long, mfi_ratio columns
@@ -87,7 +87,7 @@ def calculate_mfi_multi_timeframe(data: pd.DataFrame, short_length: int = 14, lo
         low=data['Low'], 
         close=data['Close'], 
         volume=data['Volume'], 
-        length=short_length
+        length=short_period
     )
     
     # Calculate long-term MFI
@@ -96,7 +96,7 @@ def calculate_mfi_multi_timeframe(data: pd.DataFrame, short_length: int = 14, lo
         low=data['Low'], 
         close=data['Close'], 
         volume=data['Volume'], 
-        length=long_length
+        length=long_period
     )
     
     # Create result DataFrame

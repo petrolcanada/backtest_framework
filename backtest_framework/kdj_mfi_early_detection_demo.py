@@ -58,12 +58,13 @@ def main():
             max_buy_signals_per_cross=2,     # Max 2 buys per golden cross
             enable_death_cross_buys=False,   # Disable alternative buys initially
             
-            # Custom indicator parameters - override defaults
-            adx_window=14,                   # Override default ADX window (was 308)
-            adx_sma_length=3,                # Override default ADX SMA length (was 5)
-            # kdj_window=9,                  # Uncomment to override KDJ window
-            # mfi_window=14,                 # Uncomment to override MFI window
-            # rsi_window=14,                 # Uncomment to override RSI window
+            # Custom indicator parameters - showing explicit overrides of defaults
+            adx_period=14,                   # Override default (308 -> 14) - fully standardized
+            adx_sma_period=3,                # Override default (5 -> 3) - now uses 'period' too
+            # kdj_period=198,                # Using default (9 months * 22 days)
+            # kdj_signal=66,                 # Using default (3 months * 22 days)
+            # mfi_period=48,                 # Using default (~2.2 months)
+            # rsi_period=14,                 # Using default
         )
         
         print(f"Strategy Configuration:")
@@ -177,12 +178,26 @@ def main():
         print(f"Current ADX parameters: {current_adx_params}")
         
         # Demonstrate parameter adjustment (for next run)
-        print("\nTo adjust parameters for next run:")
-        print("strategy.set_adx_params(window=21, sma_length=7, consecutive_down_days=3)")
-        print("strategy.set_kdj_params(window=14, required_up_days=5)")
-        
+        print("\nTo adjust parameters for next run using streamlined utility functions:")
+        print("# Direct indicator parameter setting (fully standardized 'period' naming):")
+        print("strategy.set_indicator_params('ADX', period=21, sma_period=7)")
+        print("strategy.set_indicator_params('MONTHLY_KDJ', period=220, signal=73)")
+        print("strategy.set_indicator_params('MFI', period=30)")
+        print("strategy.set_indicator_params('RSI', period=21)")
+        print("")
+        print("# Using utility functions for batch updates:")
+        print("from backtest_framework.core.utils.helpers import clean_params, filter_empty_dicts")
+        print("batch_params = filter_empty_dicts({")
+        print("    'ADX': clean_params(period=21, sma_period=7),")
+        print("    'MFI': clean_params(period=30),")
+        print("    'RSI': clean_params(period=21)")
+        print("})") 
+        print("strategy.update_indicator_params(batch_params)")
+        print("")
+        print("# Strategy-specific method:")
+        print("strategy.set_strategy_specific_params(required_up_days=5, max_buy_signals_per_cross=3)")    
         # Alternative: full parameter dictionary approach
-        print("\nAlternative - full parameter override:")
+        print("\nAlternative - bulk parameter update:")
         print("custom_params = {")
         print("    'ADX': {'window': 21, 'sma_length': 7},")
         print("    'MONTHLY_KDJ': {'window': 14},")
