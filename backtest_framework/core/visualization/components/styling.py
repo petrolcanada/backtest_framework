@@ -66,12 +66,13 @@ class ChartStyler:
             'paper_bgcolor': '#1E1E1E',
             'font': dict(color='white'),
             'hovermode': 'x unified',
+            'spikedistance': -1,  # Enable spike lines for all subplots
             'margin': dict(t=top_margin, r=60, l=80, b=70)  # Reduced bottom margin from 120px
         }
     
     @staticmethod
     def get_axis_config(title: str = "", axis_type: str = "linear", 
-                       side: str = "right") -> Dict[str, Any]:
+                       side: str = "right", is_xaxis: bool = False) -> Dict[str, Any]:
         """
         Get axis configuration.
         
@@ -79,11 +80,12 @@ class ChartStyler:
             title: Axis title
             axis_type: Type of axis ('linear', 'log', 'date')
             side: Side to place axis ('left', 'right')
+            is_xaxis: Whether this is an x-axis configuration
             
         Returns:
             Dictionary with axis configuration
         """
-        return {
+        config = {
             'title': title,
             'type': axis_type,
             'gridcolor': '#333333',
@@ -93,6 +95,18 @@ class ChartStyler:
             'spikethickness': 1,
             'side': side
         }
+        
+        # Enhanced spike configuration for x-axes
+        if is_xaxis:
+            config.update({
+                'spikemode': 'across',  # Spike line spans the entire height
+                'spikesnap': 'cursor',  # Snap to cursor position
+                'spikedash': 'solid',   # Solid line instead of dashed
+                'spikethickness': 2,    # Thicker spike line
+                'spikecolor': 'rgba(255, 255, 255, 0.8)'  # Slightly transparent white
+            })
+        
+        return config
     
     @staticmethod
     def get_subplot_config(rows: int, vertical_spacing: float = 0.04,

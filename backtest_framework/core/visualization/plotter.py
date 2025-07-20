@@ -468,8 +468,11 @@ class Plotter:
             'gridcolor': '#333333',
             'showgrid': True,
             'showspikes': True,
-            'spikecolor': "white",
-            'spikethickness': 1
+            'spikemode': 'across',  # Spike line should span across all subplots
+            'spikesnap': 'cursor',  # Snap to cursor position
+            'spikedash': 'solid',   # Solid line for better visibility
+            'spikethickness': 2,    # Thicker spike line
+            'spikecolor': 'rgba(255, 255, 255, 0.9)'  # High opacity white
         }
         
         # Configure y-axes for each panel
@@ -478,14 +481,21 @@ class Plotter:
         # Build axis configurations dynamically
         axis_configs = {}
         
-        # X-axes configuration
+        # X-axes configuration - ensure all have spike settings
         for i in range(1, total_panels + 1):
+            # Create a copy of x_axis_config for each axis
+            current_x_config = x_axis_config.copy()
+            current_x_config['matches'] = 'x'  # All x-axes are matched
+            
             if i == 1:
-                axis_configs['xaxis'] = {**x_axis_config, 'title': "", 'matches': 'x'}
+                current_x_config['title'] = ""
+                axis_configs['xaxis'] = current_x_config
             elif i == total_panels:  # Last panel gets the date label
-                axis_configs[f'xaxis{i}'] = {**x_axis_config, 'title': "Date", 'matches': 'x'}
+                current_x_config['title'] = "Date"
+                axis_configs[f'xaxis{i}'] = current_x_config
             else:
-                axis_configs[f'xaxis{i}'] = {**x_axis_config, 'title': "", 'matches': 'x'}
+                current_x_config['title'] = ""
+                axis_configs[f'xaxis{i}'] = current_x_config
         
         # Y-axes configuration
         y_axis_labels = [
@@ -502,13 +512,31 @@ class Plotter:
         # Apply y-axis configurations
         for i, (label, scale) in enumerate(y_axis_labels):
             axis_num = i + 1
+            y_config = self.styler.get_axis_config(label, scale, "right")
+            # Add enhanced spike settings for y-axes to show values on hover
+            y_config.update({
+                'showspikes': True,
+                'spikemode': 'toaxis',  # Show spike to axis only
+                'spikethickness': 1,
+                'spikecolor': 'rgba(255, 255, 255, 0.6)',
+                'spikedash': 'dot'
+            })
+            
             if axis_num == 1:
-                axis_configs['yaxis'] = self.styler.get_axis_config(label, scale, "right")
+                axis_configs['yaxis'] = y_config
             else:
-                axis_configs[f'yaxis{axis_num}'] = self.styler.get_axis_config(label, scale, "right")
+                axis_configs[f'yaxis{axis_num}'] = y_config
         
         # Apply all configurations
         fig.update_layout(**layout_config, **axis_configs, title="")
+        
+        # Additional update to ensure spike lines work across all subplots
+        fig.update_xaxes(showspikes=True, spikemode='across', spikesnap='cursor',
+                        spikedash='solid', spikethickness=2, 
+                        spikecolor='rgba(255, 255, 255, 0.9)')
+        
+        # Ensure hover mode is set correctly for unified hovering
+        fig.update_layout(hovermode='x unified', spikedistance=-1)
     
     # Convenience methods for backward compatibility
     def plot_chart_with_benchmark(self, ticker: str = '', base_strategy_name: str = "Monthly KDJ", 
