@@ -84,7 +84,7 @@ def main():
             commission=commission,
             leverage={"long": 1.0, "short": 1.0},    # 2x long leverage, 1x short leverage
             position_sizing=1.0,                     # Use 100% of capital per trade
-            enable_short_selling=False                # Enable short selling for long/short strategy
+            enable_short_selling=True                # Enable short selling for long/short strategy
         )
         # engine.add_risk_manager(DrawdownProtection(threshold=drawdown_threshold))
         

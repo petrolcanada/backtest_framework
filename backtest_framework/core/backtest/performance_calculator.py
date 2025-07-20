@@ -163,13 +163,29 @@ class PerformanceCalculator:
         return results
     
     def _find_first_signal_index(self, results: pd.DataFrame) -> int:
-        """Find the index of the first buy signal."""
+        """Find the index of the first signal (buy or sell) - matches capital allocation logic."""
         first_signal_idx = 0
+        first_signal_date = None
+        
+        # Check for buy signals
         if 'buy_signal' in results.columns:
             buy_signals = results[results['buy_signal'] == 1]
             if not buy_signals.empty:
-                first_signal_idx = results.index.get_indexer(
-                    [buy_signals.index[0]], method='nearest')[0]
+                first_signal_date = buy_signals.index[0]
+        
+        # Check for sell signals
+        if 'sell_signal' in results.columns:
+            sell_signals = results[results['sell_signal'] == 1]
+            if not sell_signals.empty:
+                first_sell_date = sell_signals.index[0]
+                if first_signal_date is None or first_sell_date < first_signal_date:
+                    first_signal_date = first_sell_date
+        
+        # Convert date to index if found
+        if first_signal_date is not None:
+            first_signal_idx = results.index.get_indexer(
+                [first_signal_date], method='nearest')[0]
+        
         return first_signal_idx
     
     def _calculate_dividend_reinvestment_benchmark(self, results: pd.DataFrame,

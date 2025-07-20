@@ -215,13 +215,22 @@ class PerformancePlots:
         return fig
     
     def _get_first_signal_date(self):
-        """Get the first signal date from the results."""
+        """Get the first signal date (buy or sell) from the results - matches capital allocation logic."""
         first_signal_date = None
-        buy_signal_col = 'buy_signal' if 'buy_signal' in self.results.columns else None
-        if buy_signal_col:
-            buy_signals = self.results[self.results[buy_signal_col] == 1]
+        
+        # Check for buy signals
+        if 'buy_signal' in self.results.columns:
+            buy_signals = self.results[self.results['buy_signal'] == 1]
             if not buy_signals.empty:
                 first_signal_date = buy_signals.index[0]
+        
+        # Check for sell signals
+        if 'sell_signal' in self.results.columns:
+            sell_signals = self.results[self.results['sell_signal'] == 1]
+            if not sell_signals.empty:
+                first_sell_date = sell_signals.index[0]
+                if first_signal_date is None or first_sell_date < first_signal_date:
+                    first_signal_date = first_sell_date
         
         # If no signals found, use the first date
         if first_signal_date is None:
