@@ -78,8 +78,8 @@ class PerformancePlots:
             row=row, col=col
         )
         
-        # Add horizontal reference line at 100 (starting point)
-        fig.add_hline(y=100, line_width=1, line_dash="dash", line_color="#999999", row=row, col=col)
+        # Add horizontal reference line at 0 (starting point)
+        fig.add_hline(y=0, line_width=1, line_dash="dash", line_color="#999999", row=row, col=col)
         
         # Add ending value annotations
         self._add_ending_value_annotations(fig, row, col, {
@@ -135,10 +135,12 @@ class PerformancePlots:
         if 'benchmark_drawdown' in self.results.columns:
             benchmark_drawdown = self.results['benchmark_drawdown'].iloc[first_signal_idx:] * 100
         else:
-            # Calculate benchmark drawdown
-            benchmark_data = self._calculate_benchmark_performance(first_signal_idx)
-            benchmark_peak = benchmark_data.cummax()
-            benchmark_drawdown = (benchmark_data - benchmark_peak) / benchmark_peak * 100
+            # Calculate benchmark drawdown from performance data starting at 0%
+            benchmark_data = self._calculate_benchmark_performance(first_signal_idx)  # This is now 0% to X%
+            # Convert back to cumulative values (1 + return) to calculate drawdown properly
+            benchmark_values = (benchmark_data / 100) + 1  # Convert from percentage back to cumulative values
+            benchmark_peak = benchmark_values.cummax()
+            benchmark_drawdown = (benchmark_values - benchmark_peak) / benchmark_peak * 100
         
         benchmark_drawdown = benchmark_drawdown.sort_index()
         
@@ -243,7 +245,7 @@ class PerformancePlots:
         if 'benchmark_equity' in self.results.columns:
             # Use engine-calculated benchmark
             benchmark_equity_series = self.results['benchmark_equity'].iloc[first_signal_idx:]
-            return benchmark_equity_series / benchmark_equity_series.iloc[0] * 100  # Normalized to 100
+            return (benchmark_equity_series / benchmark_equity_series.iloc[0] - 1) * 100  # Normalized to start at 0%
         else:
             # Fallback: Calculate benchmark with dividend reinvestment
             price_series = self.data['Close'].iloc[first_signal_idx:]
@@ -269,18 +271,18 @@ class PerformancePlots:
                 
                 # Convert to series and normalize to 100
                 benchmark = pd.Series(benchmark_values, index=price_series.index)
-                return benchmark / benchmark.iloc[0] * 100
+                return (benchmark / benchmark.iloc[0] - 1) * 100
             else:
                 # Price-only benchmark (no dividends)
                 initial_price = price_series.iloc[0]
-                return price_series / initial_price * 100
+                return (price_series / initial_price - 1) * 100
     
     def _calculate_strategy_performance(self, first_signal_idx: int) -> pd.Series:
         """Calculate strategy performance starting from first signal."""
         equity_col = 'equity' if 'equity' in self.results.columns else None
         initial_equity = self.results[equity_col].iloc[first_signal_idx]
         equity_series = self.results[equity_col].iloc[first_signal_idx:]
-        return equity_series / initial_equity * 100  # Normalized to 100
+        return (equity_series / initial_equity - 1) * 100  # Normalized to start at 0%
     
     def _get_benchmark_name(self) -> str:
         """Get appropriate benchmark name based on configuration."""

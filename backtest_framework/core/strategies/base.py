@@ -139,6 +139,119 @@ class BaseStrategy(ABC):
         else:
             return data
     
+    def get_signal_statistics(self, data: pd.DataFrame) -> Dict[str, Any]:
+        """
+        Get comprehensive signal statistics for analysis and debugging.
+        
+        Args:
+            data: DataFrame with signal columns
+            
+        Returns:
+            Dictionary with signal statistics
+        """
+        stats = {
+            'total_rows': len(data),
+            'buy_signals': 0,
+            'sell_signals': 0,
+            'signal_dates': {'buy': [], 'sell': []},
+            'signal_alternation': True,
+            'consecutive_issues': {'buy': 0, 'sell': 0}
+        }
+        
+        if 'buy_signal' in data.columns and 'sell_signal' in data.columns:
+            # Count signals
+            stats['buy_signals'] = int(data['buy_signal'].sum())
+            stats['sell_signals'] = int(data['sell_signal'].sum())
+            
+            # Get signal dates
+            buy_dates = data[data['buy_signal'] == 1].index.tolist()
+            sell_dates = data[data['sell_signal'] == 1].index.tolist()
+            stats['signal_dates']['buy'] = [d.strftime('%Y-%m-%d') for d in buy_dates]
+            stats['signal_dates']['sell'] = [d.strftime('%Y-%m-%d') for d in sell_dates]
+            
+            # Check for consecutive signal issues (should be 0 after cleanup)
+            last_signal_type = 0
+            for i in range(len(data)):
+                if data['buy_signal'].iloc[i] == 1:
+                    if last_signal_type == 1:
+                        stats['consecutive_issues']['buy'] += 1
+                    last_signal_type = 1
+                elif data['sell_signal'].iloc[i] == 1:
+                    if last_signal_type == 2:
+                        stats['consecutive_issues']['sell'] += 1
+                    last_signal_type = 2
+            
+            # Check if signals alternate properly
+            stats['signal_alternation'] = (
+                stats['consecutive_issues']['buy'] == 0 and 
+                stats['consecutive_issues']['sell'] == 0
+            )
+        
+        return stats
+    
+    def _cleanup_consecutive_signals(self, data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Mandatory signal cleanup to remove consecutive duplicate signals.
+        
+        This method ensures that:
+        - Only the first buy signal in a sequence of consecutive buy signals is kept
+        - Only the first sell signal in a sequence of consecutive sell signals is kept
+        - Alternating buy/sell pattern is maintained
+        
+        Example transformation:
+        Original:  [buy, sell, buy, buy, buy, sell, sell, sell]
+        Cleaned:   [buy, sell, buy, 0,   0,   sell, 0,    0  ]
+        
+        Args:
+            data: DataFrame with buy_signal and sell_signal columns
+            
+        Returns:
+            DataFrame with cleaned up signals
+        """
+        # Ensure signal columns exist
+        if 'buy_signal' not in data.columns:
+            data['buy_signal'] = 0
+        if 'sell_signal' not in data.columns:
+            data['sell_signal'] = 0
+        
+        # Make a copy to avoid modifying original
+        data = data.copy()
+        
+        # Convert signals to numpy arrays for faster processing
+        buy_signals = data['buy_signal'].values.copy()
+        sell_signals = data['sell_signal'].values.copy()
+        
+        # Track the last valid signal type (0=none, 1=buy, 2=sell)
+        last_signal_type = 0
+        
+        # Process each row
+        for i in range(len(data)):
+            current_buy = buy_signals[i]
+            current_sell = sell_signals[i]
+            
+            # Check for buy signal
+            if current_buy == 1:
+                if last_signal_type == 1:  # Previous signal was also a buy
+                    buy_signals[i] = 0  # Remove this consecutive buy signal
+                else:
+                    last_signal_type = 1  # Update last signal type to buy
+                    # Clear any sell signal on the same day (buy takes priority)
+                    if current_sell == 1:
+                        sell_signals[i] = 0
+            
+            # Check for sell signal (only if no buy signal was processed)
+            elif current_sell == 1:
+                if last_signal_type == 2:  # Previous signal was also a sell
+                    sell_signals[i] = 0  # Remove this consecutive sell signal
+                else:
+                    last_signal_type = 2  # Update last signal type to sell
+        
+        # Update the DataFrame with cleaned signals
+        data['buy_signal'] = buy_signals
+        data['sell_signal'] = sell_signals
+        
+        return data
+    
     @abstractmethod
     def generate_signals(self, data: pd.DataFrame) -> pd.DataFrame:
         """
@@ -166,7 +279,12 @@ class BaseStrategy(ABC):
         data = self.prepare_data(data)
         
         # Generate signals
-        return self.generate_signals(data)
+        data = self.generate_signals(data)
+        
+        # Mandatory signal cleanup to remove consecutive duplicate signals
+        data = self._cleanup_consecutive_signals(data)
+        
+        return data
     
     def get_strategy_info(self) -> Dict[str, Any]:
         """
