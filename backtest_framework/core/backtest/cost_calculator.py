@@ -140,15 +140,6 @@ class CostCalculator:
         
         daily_rate = annual_rate / 252  # Already in decimal form, just convert to daily
         
-        # Debug: Print first few rates to verify calculation
-        if hasattr(self, '_debug_mmf_counter'):
-            self._debug_mmf_counter += 1
-        else:
-            self._debug_mmf_counter = 1
-            
-        if self._debug_mmf_counter <= 3:
-            print(f"DEBUG MMF Rate Day {self._debug_mmf_counter}: Annual={annual_rate*100:.2f}%, Daily={daily_rate:.8f}, On $10k=${10000*daily_rate:.4f}")
-        
         return daily_rate
     
     def calculate_margin_cost(self, margin_cash_debt: float, date: pd.Timestamp) -> float:

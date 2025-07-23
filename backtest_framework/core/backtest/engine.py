@@ -206,8 +206,6 @@ class BacktestEngine:
         first_signal_date = self._find_first_signal_date(results)
         strategy_active = False
         
-        print(f"Strategy will become active after first signal: {first_signal_date.strftime('%Y-%m-%d') if first_signal_date else 'No signals found'}")
-        
         # Main backtest loop
         for i in range(len(results)):
             current_date = results.index[i]
@@ -229,7 +227,6 @@ class BacktestEngine:
             # This ensures costs start applying the day after first signal
             if not strategy_active and first_signal_date and current_date > first_signal_date:
                 strategy_active = True
-                print(f"Strategy activated on {current_date.strftime('%Y-%m-%d')} - costs/interest will now apply (day after first signal)")
             
             # Process daily costs and dividends ONLY if strategy is active
             if strategy_active:

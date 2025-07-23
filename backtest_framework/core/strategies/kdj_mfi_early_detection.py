@@ -105,9 +105,6 @@ class KDJMFIEarlyDetectionStrategy(BaseStrategy):
         data['buy_signal'] = 0
         data['sell_signal'] = 0
         
-        # Signal logging for debugging
-        signal_log = []
-        
         # Generate signals row by row
         for i in range(len(data)):
             current_date = data.index[i].strftime('%Y-%m-%d')
@@ -115,34 +112,14 @@ class KDJMFIEarlyDetectionStrategy(BaseStrategy):
             # === PRIMARY BUY LOGIC (Golden Cross Period) ===
             if self._check_golden_cross_buy_conditions(data, i):
                 data.iloc[i, data.columns.get_loc('buy_signal')] = 1
-                signal_log.append(f"{current_date}: BUY signal (golden cross period)")
                 
             # === ALTERNATIVE BUY LOGIC (Death Cross Period) ===
             elif self.enable_death_cross_buys and self._check_death_cross_buy_conditions(data, i):
                 data.iloc[i, data.columns.get_loc('buy_signal')] = 1
-                signal_log.append(f"{current_date}: ALT BUY signal (death cross period)")
                 
             # === SELL LOGIC (Death Cross Occurrence) ===
             if self._check_sell_conditions(data, i):
                 data.iloc[i, data.columns.get_loc('sell_signal')] = 1
-                signal_log.append(f"{current_date}: SELL signal (death cross)")
-        
-        # Print signal log for debugging (limited to prevent spam)
-        if signal_log and len(signal_log) <= 50:  # Only show if reasonable number of signals
-            print("=== SIGNAL GENERATION LOG ===")
-            for log_entry in signal_log:
-                print(log_entry)
-            print("=" * 30)
-        elif len(signal_log) > 50:
-            print(f"=== SIGNAL GENERATION SUMMARY ===")
-            print(f"Total signals generated: {len(signal_log)}")
-            print("First 5 signals:")
-            for log_entry in signal_log[:5]:
-                print(f"  {log_entry}")
-            print("Last 5 signals:")
-            for log_entry in signal_log[-5:]:
-                print(f"  {log_entry}")
-            print("=" * 34)
         
         return data
     

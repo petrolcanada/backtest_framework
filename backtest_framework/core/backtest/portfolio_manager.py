@@ -331,15 +331,6 @@ class PortfolioManager:
         
         total_interest = original_cash_interest + short_proceeds_interest
         
-        # Debug: Print first few applications to verify
-        if hasattr(self, '_debug_mmf_counter'):
-            self._debug_mmf_counter += 1
-        else:
-            self._debug_mmf_counter = 1
-            
-        if self._debug_mmf_counter <= 3:
-            print(f"DEBUG MMF Applied Day {self._debug_mmf_counter}: Rate={daily_mmf_rate:.8f}, Original=${self.original_cash-original_cash_interest:.2f}→${self.original_cash:.2f} (+${original_cash_interest:.4f}), Total Interest=${total_interest:.4f}")
-        
         return total_interest
     
     def reset(self):
