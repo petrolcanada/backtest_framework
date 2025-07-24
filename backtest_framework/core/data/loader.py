@@ -41,10 +41,9 @@ class DataLoader:
            resample_period: str = 'D',
            start_date: Optional[str] = None,
            end_date: Optional[str] = None,
-           source: str = 'auto',
-           force_download: bool = False) -> Union[pd.DataFrame, Dict[str, pd.DataFrame]]:
+           mode: str = 'incremental') -> Union[pd.DataFrame, Dict[str, pd.DataFrame]]:
         """
-        Load data for one or more tickers with optional resampling.
+        Load data for one or more tickers with three simple modes.
         
         Args:
             tickers: Single ticker or list of tickers to load
@@ -52,11 +51,13 @@ class DataLoader:
             resample_period: Frequency to resample data to ('D', 'W', 'M', 'Q', etc.)
             start_date: Specific start date (format: 'YYYY-MM-DD'), overrides period if provided
             end_date: Specific end date (format: 'YYYY-MM-DD')
-            source: Data source ('yfinance', 'csv', 'auto')
-            force_download: Force fresh download even if local data exists
+            mode: Data loading mode:
+                  - 'full_reload': Download max period from yfinance, overwrite CSV
+                  - 'incremental': Update last 10 days from CSV file to current date
+                  - 'no_reload': Use existing CSV file as-is, no API calls
             
         Returns:
-            Dictionary mapping tickers to DataFrames with OHLCV data
+            DataFrame for single ticker or Dictionary mapping tickers to DataFrames
         """
         if isinstance(tickers, str):
             tickers = [tickers]
@@ -64,34 +65,80 @@ class DataLoader:
         result = {}
         
         for ticker in tickers:
-            # Determine data source
-            actual_source = source
-            if source == 'auto':
-                ticker_file = os.path.join(self.data_dir, f"{ticker}_daily.csv")
-                if os.path.exists(ticker_file) and not force_download:
-                    actual_source = 'csv'
+            print(f"\n[DataLoader] Processing {ticker} in '{mode}' mode...")
+            if mode == 'full_reload':
+                print(f"[DataLoader] Full reload: Downloading max period from yfinance for {ticker}")
+                df = self._load_from_yfinance(ticker, 'max', None, None)
+                if not df.empty:
+                    self._save_to_csv(ticker, df)
+                    print(f"[DataLoader] Saved {len(df)} records to CSV for {ticker} ({df.index[0]} to {df.index[-1]})")
                 else:
-                    actual_source = 'yfinance'
-            
-            # Load from appropriate source
-            if actual_source == 'csv':
-                df = self._load_from_csv(ticker)
-            elif actual_source == 'yfinance':
-                df = self._load_from_yfinance(ticker, period, start_date, end_date)
-                # Save to CSV for future use
-                self._save_to_csv(ticker, df)
+                    print(f"[DataLoader] Warning: No data retrieved for {ticker}")
+                
+            elif mode == 'incremental':
+                ticker_file = os.path.join(self.data_dir, f"{ticker}_daily.csv")
+                if os.path.exists(ticker_file):
+                    print(f"[DataLoader] Found existing CSV for {ticker}, loading...")
+                    existing_df = self._load_from_csv(ticker)
+                    print(f"[DataLoader] Existing data: {len(existing_df)} records ({existing_df.index[0]} to {existing_df.index[-1]})")
+                    
+                    if len(existing_df) >= 10:
+                        last_10th_date = existing_df.index[-10].strftime('%Y-%m-%d')
+                        print(f"[DataLoader] Fetching updates from {last_10th_date} to current for {ticker}")
+                        
+                        new_df = self._load_from_yfinance(ticker, None, last_10th_date, None)
+                        
+                        if not new_df.empty:
+                            print(f"[DataLoader] Downloaded {len(new_df)} new records")
+                            # Combine datasets, dropping duplicates
+                            df = pd.concat([existing_df.iloc[:-10], new_df])
+                            df = df[~df.index.duplicated(keep='last')]
+                            self._save_to_csv(ticker, df)
+                            print(f"[DataLoader] Updated CSV: {len(df)} total records ({df.index[0]} to {df.index[-1]})")
+                        else:
+                            print(f"[DataLoader] No new data available, using existing data")
+                            df = existing_df
+                    else:
+                        print(f"[DataLoader] Insufficient existing data ({len(existing_df)} < 10 records), doing full reload")
+                        df = self._load_from_yfinance(ticker, 'max', None, None)
+                        if not df.empty:
+                            self._save_to_csv(ticker, df)
+                            print(f"[DataLoader] Saved {len(df)} records to CSV for {ticker}")
+                else:
+                    print(f"[DataLoader] No CSV file found for {ticker}, doing full reload")
+                    df = self._load_from_yfinance(ticker, 'max', None, None)
+                    if not df.empty:
+                        self._save_to_csv(ticker, df)
+                        print(f"[DataLoader] Created new CSV with {len(df)} records for {ticker}")
+                    
+            elif mode == 'no_reload':
+                ticker_file = os.path.join(self.data_dir, f"{ticker}_daily.csv")
+                if os.path.exists(ticker_file):
+                    print(f"[DataLoader] Loading existing CSV file for {ticker}")
+                    df = self._load_from_csv(ticker)
+                    print(f"[DataLoader] Loaded {len(df)} records from CSV ({df.index[0]} to {df.index[-1]})")
+                else:
+                    raise FileNotFoundError(f"No CSV file found for {ticker}. Use 'full_reload' or 'incremental' mode first.")
+                    
             else:
-                raise ValueError(f"Unsupported data source: {actual_source}")
+                raise ValueError(f"Invalid mode: {mode}. Use 'full_reload', 'incremental', or 'no_reload'")
             
-            # Filter by date range
-            df = self._filter_by_date_range(df, period, start_date, end_date)
+            # Filter by date range if specified
+            if start_date or end_date or period != 'max':
+                original_len = len(df)
+                df = self._filter_by_date_range(df, period, start_date, end_date)
+                if len(df) != original_len:
+                    print(f"[DataLoader] Filtered to {len(df)} records for period/date range ({df.index[0]} to {df.index[-1]})")
             
             # Apply resampling if needed
             if resample_period != 'D':
+                original_len = len(df)
                 df = self._resample_data(df, resample_period)
+                print(f"[DataLoader] Resampled from {original_len} daily records to {len(df)} {resample_period} records")
                 
             result[ticker] = df
             
+        print(f"\n[DataLoader] Data loading completed for {len(tickers)} ticker(s)")
         return result if len(tickers) > 1 else result[tickers[0]]
     
     def load_fed_funds_rate(self, start_date: str = '1990-01-01', 
@@ -565,7 +612,7 @@ class DataLoader:
     
     def update_data(self, tickers: Union[str, List[str]]) -> Dict[str, pd.DataFrame]:
         """
-        Update existing data by fetching only the latest points.
+        Update existing data by fetching only the latest points (equivalent to incremental mode).
         
         Args:
             tickers: Single ticker or list of tickers to update
@@ -573,37 +620,4 @@ class DataLoader:
         Returns:
             Dictionary mapping tickers to updated DataFrames
         """
-        if isinstance(tickers, str):
-            tickers = [tickers]
-            
-        result = {}
-        
-        for ticker in tickers:
-            filename = os.path.join(self.data_dir, f"{ticker}_daily.csv")
-            if not os.path.exists(filename):
-                # If file doesn't exist, do a full load
-                df = self._load_from_yfinance(ticker, period='1y', start_date=None, end_date=None)
-            else:
-                # Load existing data
-                existing_df = self._load_from_csv(ticker)
-                
-                # Get date of 10th-to-last row to ensure overlap
-                last_10th_date = existing_df.index[-10]
-                
-                # Fetch new data from that date
-                stock = yf.Ticker(ticker)
-                new_df = stock.history(start=last_10th_date, auto_adjust=True, actions=True)
-                
-                # Remove timezone information
-                if isinstance(new_df.index, pd.DatetimeIndex) and new_df.index.tz is not None:
-                    new_df.index = new_df.index.tz_localize(None).normalize()
-                
-                # Combine datasets, dropping duplicates
-                df = pd.concat([existing_df.iloc[:-10], new_df])
-                df = df[~df.index.duplicated(keep='last')]
-            
-            # Save updated data
-            self._save_to_csv(ticker, df)
-            result[ticker] = df
-            
-        return result if len(tickers) > 1 else result[tickers[0]]
+        return self.load(tickers, mode='incremental')

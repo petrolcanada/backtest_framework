@@ -34,14 +34,20 @@ def main():
     ticker = "INTC"
     initial_capital = 10000
     commission = 0.001
+    slippage = 0.001                        # Add 0.1% slippage for realistic execution costs
     drawdown_threshold = 0.2
     
     try:
-        # 1. Load data
+        # 1. Load data with mode selection
         data_dir = os.path.join(os.path.expanduser("~"), "local_script", 
                                "Local Technical Indicator Data", "security_data")
         loader = DataLoader(data_dir=data_dir)
-        data = loader.load(ticker, period="20y", resample_period="D")
+        
+        # Data loading modes:
+        # 'full_reload': Download max period from yfinance, overwrite CSV
+        # 'incremental': Update last 10 days from CSV file to current date  
+        # 'no_reload': Use existing CSV file as-is, no API calls
+        data = loader.load(ticker, period="10y", resample_period="D", mode="no_reload")
     
         # 2. Initialize strategy with parameters (including custom indicator parameters)
         strategy = KDJMFIEarlyDetectionStrategy(
@@ -64,6 +70,7 @@ def main():
         engine = BacktestEngine(
             initial_capital=initial_capital, 
             commission=commission,
+            slippage=slippage,                       # Add slippage parameter
             leverage={"long": 2.0, "short": 1.0},    # 2x long leverage, 1x short leverage
             position_sizing=1.0,                     # Use 100% of capital per trade
             enable_short_selling=True                # Enable short selling for long/short strategy
