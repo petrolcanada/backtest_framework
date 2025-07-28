@@ -176,7 +176,7 @@ class KDJMFIEarlyDetectionStrategy(BaseStrategy):
                 
 
             # Condition 3: J up less than 50
-            if data['monthly_j'].iloc[i] > 50:
+            if data['monthly_j'].iloc[i] > 40:
                 return False
             
             # # Condition 3: ADX down condition met

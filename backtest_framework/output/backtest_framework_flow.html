@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backtest Framework - Business Flow</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+        
+        .header p {
+            margin: 10px 0 0 0;
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .flow-container {
+            padding: 40px;
+            background: #f8f9fa;
+        }
+        
+        .phase {
+            margin-bottom: 50px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .phase-header {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            padding: 20px 30px;
+            font-size: 1.4em;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+        }
+        
+        .phase-number {
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-weight: bold;
+        }
+        
+        .phase-content {
+            padding: 30px;
+        }
+        
+        .step-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .step {
+            background: #ffffff;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .step:hover {
+            border-color: #3498db;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.2);
+        }
+        
+        .step-title {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+        
+        .step-description {
+            color: #5a6c7d;
+            line-height: 1.6;
+            font-size: 0.95em;
+        }
+        
+        .step-icon {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 1.5em;
+            opacity: 0.3;
+        }
+        
+        .arrow {
+            text-align: center;
+            margin: 20px 0;
+            color: #7f8c8d;
+            font-size: 2em;
+        }
+        
+        .key-benefits {
+            background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-top: 30px;
+        }
+        
+        .key-benefits h3 {
+            margin: 0 0 20px 0;
+            font-size: 1.3em;
+        }
+        
+        .benefits-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        
+        .benefit {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .benefit-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .tech-stack {
+            background: linear-gradient(135deg, #8e44ad 0%, #9b59b6 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        
+        .tech-stack h4 {
+            margin: 0 0 15px 0;
+            text-align: center;
+        }
+        
+        .tech-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+        
+        .tech-item {
+            background: rgba(255,255,255,0.2);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9em;
+        }
+        
+        .transaction-flow {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 40px;
+            border-radius: 15px;
+            margin-top: 30px;
+        }
+        
+        .transaction-flow h2 {
+            text-align: center;
+            margin: 0 0 10px 0;
+            font-size: 2.2em;
+            font-weight: 300;
+        }
+        
+        .flow-subtitle {
+            text-align: center;
+            margin: 0 0 40px 0;
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .flow-chain {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 15px;
+            margin-bottom: 40px;
+        }
+        
+        .flow-step {
+            background: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 25px 20px;
+            text-align: center;
+            min-width: 180px;
+            max-width: 200px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .flow-step:hover {
+            background: rgba(255,255,255,0.2);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        
+        .flow-icon {
+            font-size: 2.5em;
+            margin-bottom: 15px;
+            display: block;
+        }
+        
+        .flow-title {
+            font-weight: 600;
+            font-size: 1.1em;
+            margin-bottom: 12px;
+            color: #ecf0f1;
+        }
+        
+        .flow-description {
+            font-size: 0.85em;
+            line-height: 1.4;
+            opacity: 0.9;
+        }
+        
+        .flow-arrow {
+            font-size: 2em;
+            color: #3498db;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            margin: 0 5px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        
+        .flow-highlights {
+            background: rgba(52, 152, 219, 0.1);
+            border-radius: 12px;
+            padding: 30px;
+            border: 1px solid rgba(52, 152, 219, 0.3);
+        }
+        
+        .flow-highlights h3 {
+            text-align: center;
+            margin: 0 0 25px 0;
+            font-size: 1.4em;
+            color: #3498db;
+        }
+        
+        .highlight-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+        }
+        
+        .highlight {
+            background: rgba(255,255,255,0.1);
+            padding: 15px 20px;
+            border-radius: 8px;
+            font-size: 0.95em;
+            line-height: 1.5;
+        }
+        
+        .highlight strong {
+            color: #3498db;
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        @media (max-width: 768px) {
+            .flow-chain {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .flow-arrow {
+                transform: rotate(90deg);
+                margin: 10px 0;
+            }
+            
+            .flow-step {
+                max-width: 90%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔬 Algorithmic Trading Backtest Framework</h1>
+            <p>Professional-Grade Strategy Testing & Validation System</p>
+        </div>
+        
+        <div class="flow-container">
+            <!-- Phase 1: Data Management -->
+            <div class="phase">
+                <div class="phase-header">
+                    <div class="phase-number">1</div>
+                    <div>📊 Data Management & Loading</div>
+                </div>
+                <div class="phase-content">
+                    <div class="step-grid">
+                        <div class="step">
+                            <div class="step-icon">💾</div>
+                            <div class="step-title">Smart Data Loading</div>
+                            <div class="step-description">
+                                <strong>3 Loading Modes:</strong><br>
+                                • <em>Full Reload:</em> Fresh download from Yahoo Finance<br>
+                                • <em>Incremental:</em> Update last 10 days only<br>
+                                • <em>No Reload:</em> Use cached data (fastest)
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-icon">🗄️</div>
+                            <div class="step-title">Automatic Caching</div>
+                            <div class="step-description">
+                                Intelligent local storage of historical data to minimize API calls and improve performance. Handles timezone normalization and data validation automatically.
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-icon">📈</div>
+                            <div class="step-title">Multi-Timeframe Support</div>
+                            <div class="step-description">
+                                Supports resampling from daily to weekly, monthly, or quarterly data. Configurable periods from 1 day to maximum available history.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Phase 2: Strategy Processing -->
+            <div class="phase">
+                <div class="phase-header">
+                    <div class="phase-number">2</div>
+                    <div>🧠 Strategy Processing & Signal Generation</div>
+                </div>
+                <div class="phase-content">
+                    <div class="step-grid">
+                        <div class="step">
+                            <div class="step-icon">⚙️</div>
+                            <div class="step-title">Technical Indicator Computation</div>
+                            <div class="step-description">
+                                Calculates advanced indicators: KDJ, MFI, ADX, RSI with configurable parameters. Includes derived factors like consecutive patterns and cross-over detection.
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-icon">🎯</div>
+                            <div class="step-title">Strategy Logic Execution</div>
+                            <div class="step-description">
+                                <strong>KDJ MFI Early Detection:</strong><br>
+                                • Buy: Golden cross + J momentum + avoid overbought<br>
+                                • Sell: Death cross or K/J > 100 (overbought protection)
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-icon">✅</div>
+                            <div class="step-title">Signal Validation</div>
+                            <div class="step-description">
+                                Validates buy/sell signals for conflicts, ensures proper binary format (0/1), and handles edge cases like simultaneous signals.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Phase 3: Risk Management -->
+            <div class="phase">
+                <div class="phase-header">
+                    <div class="phase-number">3</div>
+                    <div>🛡️ Risk Management & Position Control</div>
+                </div>
+                <div class="phase-content">
+                    <div class="step-grid">
+                        <div class="step">
+                            <div class="step-icon">📉</div>
+                            <div class="step-title">Smart Drawdown Protection</div>
+                            <div class="step-description">
+                                Position-aware drawdown protection (20% threshold). Only triggers when actual positions exist - prevents false signals when flat.
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-icon">⚖️</div>
+                            <div class="step-title">Position Sizing & Leverage</div>
+                            <div class="step-description">
+                                Configurable position sizing (100% capital) with separate leverage for long (2x) and short (1x) positions. Supports both long-only and long/short strategies.
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-icon">🔄</div>
+                            <div class="step-title">T+1 Execution Logic</div>
+                            <div class="step-description">
+                                Realistic execution with T+1 delays - signals generated today execute at tomorrow's open price, simulating real market conditions.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Phase 4: Execution Engine -->
+            <div class="phase">
+                <div class="phase-header">
+                    <div class="phase-number">4</div>
+                    <div>🔧 Trading Execution Engine</div>
+                </div>
+                <div class="phase-content">
+                    <div class="step-grid">
+                        <div class="step">
+                            <div class="step-icon">💰</div>
+                            <div class="step-title">Cost Calculation</div>
+                            <div class="step-description">
+                                <strong>Realistic Trading Costs:</strong><br>
+                                • Commission: 0.1% per trade<br>
+                                • Slippage: 0.1% market impact<br>
+                                • Margin interest on leveraged positions
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-icon">📊</div>
+                            <div class="step-title">Portfolio Management</div>
+                            <div class="step-description">
+                                Real-time tracking of cash, positions, equity, and margin usage. Handles dividend payments, margin costs, and money market fund interest on idle cash.
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-icon">📋</div>
+                            <div class="step-title">Trade Tracking</div>
+                            <div class="step-description">
+                                Detailed logging of all trades with entry/exit prices, P&L calculation, win/loss tracking, and enhanced metrics like profit factor.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Phase 5: Performance Analysis -->
+            <div class="phase">
+                <div class="phase-header">
+                    <div class="phase-number">5</div>
+                    <div>📈 Performance Analysis & Reporting</div>
+                </div>
+                <div class="phase-content">
+                    <div class="step-grid">
+                        <div class="step">
+                            <div class="step-icon">📊</div>
+                            <div class="step-title">Key Metrics Calculation</div>
+                            <div class="step-description">
+                                <strong>Professional Metrics:</strong><br>
+                                • Total Return & CAGR<br>
+                                • Sharpe Ratio & Max Drawdown<br>
+                                • Win Rate & Trade Count<br>
+                                • Benchmark Comparison
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-icon">📋</div>
+                            <div class="step-title">Excel Export</div>
+                            <div class="step-description">
+                                Comprehensive Excel export with multiple sheets: backtest results, performance summary, strategy configuration, and detailed signal analysis.
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-icon">📉</div>
+                            <div class="step-title">Interactive Visualization</div>
+                            <div class="step-description">
+                                Rich HTML charts showing equity curves, indicator overlays, buy/sell signals, and performance metrics with interactive zoom and hover details.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Key Benefits -->
+            <div class="key-benefits">
+                <h3>🎯 Business Value & Benefits</h3>
+                <div class="benefits-grid">
+                    <div class="benefit">
+                        <div class="benefit-title">Risk Mitigation</div>
+                        Strategy validation before live trading reduces potential losses
+                    </div>
+                    <div class="benefit">
+                        <div class="benefit-title">Performance Transparency</div>
+                        Clear metrics and benchmarking for investment decisions
+                    </div>
+                    <div class="benefit">
+                        <div class="benefit-title">Cost Efficiency</div>
+                        Eliminates paper trading costs and accelerates strategy development
+                    </div>
+                    <div class="benefit">
+                        <div class="benefit-title">Regulatory Compliance</div>
+                        Detailed audit trails and performance documentation
+                    </div>
+                    <div class="benefit">
+                        <div class="benefit-title">Scalability</div>
+                        Test multiple strategies and timeframes efficiently
+                    </div>
+                    <div class="benefit">
+                        <div class="benefit-title">Data-Driven Decisions</div>
+                        Quantitative analysis replaces gut-feeling trading
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Technical Stack -->
+            <div class="tech-stack">
+                <h4>🔧 Technology Stack</h4>
+                <div class="tech-items">
+                    <div class="tech-item">Python</div>
+                    <div class="tech-item">Pandas</div>
+                    <div class="tech-item">NumPy</div>
+                    <div class="tech-item">Yahoo Finance API</div>
+                    <div class="tech-item">Plotly</div>
+                    <div class="tech-item">Excel Integration</div>
+                    <div class="tech-item">Modular Architecture</div>
+                </div>
+            </div>
+            
+            <!-- Transaction Flow Diagram -->
+            <div class="transaction-flow">
+                <h2>🔄 Transaction-Based Backtest Flow</h2>
+                <p class="flow-subtitle">End-to-End Process from Market Data to Performance Analysis</p>
+                
+                <div class="flow-chain">
+                    <div class="flow-step">
+                        <div class="flow-icon">📊</div>
+                        <div class="flow-title">Market Data</div>
+                        <div class="flow-description">
+                            OHLCV price data from Yahoo Finance
+                            <br>• Daily/Weekly/Monthly timeframes
+                            <br>• 10+ years historical data
+                            <br>• Dividend & split adjustments
+                        </div>
+                    </div>
+                    
+                    <div class="flow-arrow">→</div>
+                    
+                    <div class="flow-step">
+                        <div class="flow-icon">⚙️</div>
+                        <div class="flow-title">Technical Indicators</div>
+                        <div class="flow-description">
+                            Core technical analysis calculations
+                            <br>• KDJ (Stochastic momentum)
+                            <br>• MFI (Money Flow Index)
+                            <br>• ADX (Trend strength)
+                            <br>• RSI (Relative strength)
+                        </div>
+                    </div>
+                    
+                    <div class="flow-arrow">→</div>
+                    
+                    <div class="flow-step">
+                        <div class="flow-icon">📈</div>
+                        <div class="flow-title">Derived Indicators</div>
+                        <div class="flow-description">
+                            Advanced pattern recognition
+                            <br>• Consecutive up/down days
+                            <br>• Golden/Death cross detection
+                            <br>• Slope calculations
+                            <br>• Momentum patterns
+                        </div>
+                    </div>
+                    
+                    <div class="flow-arrow">→</div>
+                    
+                    <div class="flow-step">
+                        <div class="flow-icon">🧠</div>
+                        <div class="flow-title">Strategy & Signals</div>
+                        <div class="flow-description">
+                            KDJ MFI Early Detection logic
+                            <br>• Buy: Golden cross + J momentum
+                            <br>• Avoid: Overbought conditions (>30)
+                            <br>• Sell: Death cross or K/J > 100
+                            <br>• Binary signals (0/1)
+                        </div>
+                    </div>
+                    
+                    <div class="flow-arrow">→</div>
+                    
+                    <div class="flow-step">
+                        <div class="flow-icon">💱</div>
+                        <div class="flow-title">Transaction Engine</div>
+                        <div class="flow-description">
+                            Realistic trade execution
+                            <br>• T+1 execution delays
+                            <br>• Commission (0.1%) + Slippage (0.1%)
+                            <br>• Position sizing & leverage
+                            <br>• Long/Short capabilities
+                        </div>
+                    </div>
+                    
+                    <div class="flow-arrow">→</div>
+                    
+                    <div class="flow-step">
+                        <div class="flow-icon">🛡️</div>
+                        <div class="flow-title">Risk Management</div>
+                        <div class="flow-description">
+                            Position-aware protection
+                            <br>• Drawdown protection (20%)
+                            <br>• Only acts with actual positions
+                            <br>• Separate long/short logic
+                            <br>• Prevents over-leveraging
+                        </div>
+                    </div>
+                    
+                    <div class="flow-arrow">→</div>
+                    
+                    <div class="flow-step">
+                        <div class="flow-icon">📊</div>
+                        <div class="flow-title">Performance Analytics</div>
+                        <div class="flow-description">
+                            Comprehensive metrics
+                            <br>• Total Return & CAGR
+                            <br>• Sharpe Ratio & Max Drawdown
+                            <br>• Win Rate & Trade Statistics
+                            <br>• Benchmark comparison
+                        </div>
+                    </div>
+                    
+                    <div class="flow-arrow">→</div>
+                    
+                    <div class="flow-step">
+                        <div class="flow-icon">📈</div>
+                        <div class="flow-title">Visualization</div>
+                        <div class="flow-description">
+                            Multi-format outputs
+                            <br>• Interactive HTML charts
+                            <br>• Excel export (4 sheets)
+                            <br>• Equity curve & indicators
+                            <br>• Signal annotations
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flow-highlights">
+                    <h3>🔑 Key Integration Points</h3>
+                    <div class="highlight-grid">
+                        <div class="highlight">
+                            <strong>📊→⚙️ Data to Indicators:</strong> Raw OHLCV data feeds into technical indicator calculations with configurable periods
+                        </div>
+                        <div class="highlight">
+                            <strong>⚙️→📈 Indicators to Patterns:</strong> Base indicators generate derived factors like consecutive patterns and cross-overs
+                        </div>
+                        <div class="highlight">
+                            <strong>📈→🧠 Patterns to Strategy:</strong> Multiple indicator signals combine into unified buy/sell decisions
+                        </div>
+                        <div class="highlight">
+                            <strong>🧠→💱 Signals to Trades:</strong> Strategy signals trigger realistic transaction execution with costs
+                        </div>
+                        <div class="highlight">
+                            <strong>💱→🛡️ Trades to Risk:</strong> Active positions monitored for drawdown protection and position limits
+                        </div>
+                        <div class="highlight">
+                            <strong>🛡️→📊 Risk to Performance:</strong> Final equity curve includes all trades, costs, and risk adjustments
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

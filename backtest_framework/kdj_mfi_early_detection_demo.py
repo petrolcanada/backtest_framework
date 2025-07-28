@@ -31,7 +31,7 @@ def main():
     timer = Timer()
     
     # Configuration
-    ticker = "INTC"
+    ticker = "SOL-USD"
     initial_capital = 10000
     commission = 0.001
     slippage = 0.001                        # Add 0.1% slippage for realistic execution costs
@@ -47,7 +47,7 @@ def main():
         # 'full_reload': Download max period from yfinance, overwrite CSV
         # 'incremental': Update last 10 days from CSV file to current date  
         # 'no_reload': Use existing CSV file as-is, no API calls
-        data = loader.load(ticker, period="10y", resample_period="D", mode="no_reload")
+        data = loader.load(ticker, period="10y", resample_period="D", mode="full_reload")
     
         # 2. Initialize strategy with parameters (including custom indicator parameters)
         strategy = KDJMFIEarlyDetectionStrategy(

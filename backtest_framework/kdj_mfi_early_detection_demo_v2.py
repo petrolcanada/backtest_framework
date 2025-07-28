@@ -31,7 +31,7 @@ def main():
     timer = Timer()
     
     # Configuration
-    ticker = "INTC"
+    ticker = "SPY"
     initial_capital = 10000
     commission = 0.001
     slippage = 0.001                        # Add 0.1% slippage for realistic execution costs
@@ -47,7 +47,7 @@ def main():
         # 'full_reload': Download max period from yfinance, overwrite CSV
         # 'incremental': Update last 10 days from CSV file to current date  
         # 'no_reload': Use existing CSV file as-is, no API calls
-        data = loader.load(ticker, period="50y", resample_period="D", mode="no_reload")
+        data = loader.load(ticker, period="10y", resample_period="D", mode="no_reload")
     
         # 2. Initialize strategy with parameters (including custom indicator parameters)
         strategy = KDJMFIEarlyDetectionStrategy(
@@ -55,7 +55,7 @@ def main():
             required_up_days=7,              # J must rise for 7 days
             required_down_days=4,            # For flip detection
             required_adx_down_days=5,        # ADX down requirement  
-            enable_death_cross_buys=False,   # Disable alternative buys initially
+            enable_death_cross_buys=True,   # Disable alternative buys initially
             
             # Custom indicator parameters - showing explicit overrides of defaults
             adx_period=14*22,                   # Override default (308 -> 14) - fully standardized
@@ -71,12 +71,12 @@ def main():
             initial_capital=initial_capital, 
             commission=commission,
             slippage=slippage,                       # Add slippage parameter
-            leverage={"long": 2.0, "short": 1.0},    # 2x long leverage, 1x short leverage
+            leverage={"long": 1.0, "short": 1.0},    # 2x long leverage, 1x short leverage
             position_sizing=1.0,                     # Use 100% of capital per trade
             enable_short_selling=False                # Enable short selling for long/short strategy
         )
         # Add drawdown protection risk manager
-        engine.add_risk_manager(DrawdownProtection(threshold=drawdown_threshold))
+        # engine.add_risk_manager(DrawdownProtection(threshold=drawdown_threshold))
         
         # 4. Run backtest (strategy will automatically compute required indicators)
         results = engine.run(strategy, data)
@@ -130,7 +130,7 @@ def main():
         )
         
         # Save chart
-        output_file = os.path.join(output_dir, f"{ticker}_kdj_mfi_early_detection_strategy.html")
+        output_file = os.path.join(output_dir, f"{ticker}_kdj_mfi_early_detection_strategy_v2.html")
         plotter.save(output_file)
         
         # Open chart in browser
