@@ -35,7 +35,7 @@ class KDJCrossDepressionStrategy(BaseStrategy):
     def __init__(self, 
                  # Strategy parameters
                  depression_threshold: float = 50.0,      # Depression zone threshold
-                 j_extreme_threshold: float = 100.0,      # J extreme level for sell
+                 j_extreme_threshold: float = 200.0,      # J extreme level for sell
                  use_monthly_kdj: bool = True,            # Use monthly vs daily KDJ
                  
                  # Indicator parameter overrides
