@@ -9,12 +9,13 @@ import subprocess
 
 # Add current directory and parent to path for imports
 current_dir = os.path.dirname(os.path.abspath(__file__))
-scripts_dir = os.path.dirname(current_dir)
+backtest_framework_dir = os.path.dirname(current_dir)
+scripts_dir = os.path.dirname(backtest_framework_dir)
 sys.path.append(scripts_dir)
 
 # Import from the backtesting framework
 from backtest_framework.core.data.loader import DataLoader
-from backtest_framework.core.strategies.kdj_mfi_early_detection import KDJMFIEarlyDetectionStrategy
+from backtest_framework.core.signals.kdj_mfi_early_detection import KDJMFIEarlyDetectionStrategy
 from backtest_framework.core.backtest.engine import BacktestEngine
 from backtest_framework.core.backtest.risk_management import DrawdownProtection
 from backtest_framework.core.utils.helpers import Timer, suppress_warnings

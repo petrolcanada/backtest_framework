@@ -5,14 +5,15 @@ import os
 import sys
 
 # Add current directory and parent to path for imports
-# We're inside the backtest_framework directory, so add scripts directory to path
+# We're inside the backtest_framework/strategies directory, so add scripts directory to path
 current_dir = os.path.dirname(os.path.abspath(__file__))
-scripts_dir = os.path.dirname(current_dir)
+backtest_framework_dir = os.path.dirname(current_dir)
+scripts_dir = os.path.dirname(backtest_framework_dir)
 sys.path.append(scripts_dir)
 
 # Import from the backtesting framework
 from backtest_framework.core.data.loader import DataLoader
-from backtest_framework.core.strategies.kdj_cross import GoldenDeadCrossStrategyMonthly
+from backtest_framework.core.signals.kdj_cross import GoldenDeadCrossStrategyMonthly
 from backtest_framework.core.backtest.engine import BacktestEngine
 from backtest_framework.core.backtest.risk_management import DrawdownProtection
 from backtest_framework.core.visualization.plotter import Plotter

@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 
-from backtest_framework.core.strategies.base import BaseStrategy
+from backtest_framework.core.signals.base import BaseStrategy
 from .portfolio_manager import PortfolioManager
 from .cost_calculator import CostCalculator
 from .trade_executor import TradeExecutor

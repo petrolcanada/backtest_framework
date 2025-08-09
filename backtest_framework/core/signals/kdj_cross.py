@@ -4,7 +4,7 @@ KDJ Golden/Dead Cross strategy implementations.
 from typing import List
 import pandas as pd
 import numpy as np
-from backtest_framework.core.strategies.base import BaseStrategy
+from backtest_framework.core.signals.base import BaseStrategy
 
 class GoldenDeadCrossStrategyBase(BaseStrategy):
     """

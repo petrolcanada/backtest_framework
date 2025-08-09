@@ -5,8 +5,8 @@ Backtesting Framework - A modular, dependency-aware backtesting framework for mu
 from backtest_framework.core.data.loader import DataLoader
 from backtest_framework.core.indicators.calculator import IndicatorCalculator
 from backtest_framework.core.indicators.registry import IndicatorRegistry
-from backtest_framework.core.strategies.base import BaseStrategy
-from backtest_framework.core.strategies.kdj_cross import (
+from backtest_framework.core.signals.base import BaseStrategy
+from backtest_framework.core.signals.kdj_cross import (
     GoldenDeadCrossStrategyMonthly,
     GoldenDeadCrossStrategyDaily
 )

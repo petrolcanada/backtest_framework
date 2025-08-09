@@ -6,12 +6,13 @@ import sys
 
 # Add current directory and parent to path for imports
 current_dir = os.path.dirname(os.path.abspath(__file__))
-scripts_dir = os.path.dirname(current_dir)
+backtest_framework_dir = os.path.dirname(current_dir)
+scripts_dir = os.path.dirname(backtest_framework_dir)
 sys.path.append(scripts_dir)
 
 # Import from the backtesting framework
 from backtest_framework.core.data.loader import DataLoader
-from backtest_framework.core.strategies.kdj_mfi_early_detection_v2 import KDJMFIEarlyDetectionStrategy
+from backtest_framework.core.signals.kdj_mfi_early_detection import KDJMFIEarlyDetectionStrategy
 from backtest_framework.core.backtest.engine import BacktestEngine
 from backtest_framework.core.backtest.risk_management import DrawdownProtection
 from backtest_framework.core.visualization.plotter import Plotter
@@ -31,7 +32,7 @@ def main():
     timer = Timer()
     
     # Configuration
-    ticker = "SPY"
+    ticker = "AAPL"
     initial_capital = 10000
     commission = 0.001
     slippage = 0.001                        # Add 0.1% slippage for realistic execution costs
@@ -47,7 +48,7 @@ def main():
         # 'full_reload': Download max period from yfinance, overwrite CSV
         # 'incremental': Update last 10 days from CSV file to current date  
         # 'no_reload': Use existing CSV file as-is, no API calls
-        data = loader.load(ticker, period="10y", resample_period="D", mode="no_reload")
+        data = loader.load(ticker, period="20y", resample_period="D", mode="no_reload")
     
         # 2. Initialize strategy with parameters (including custom indicator parameters)
         strategy = KDJMFIEarlyDetectionStrategy(
@@ -73,9 +74,8 @@ def main():
             slippage=slippage,                       # Add slippage parameter
             leverage={"long": 1.0, "short": 1.0},    # 2x long leverage, 1x short leverage
             position_sizing=1.0,                     # Use 100% of capital per trade
-            enable_short_selling=False                # Enable short selling for long/short strategy
+            enable_short_selling=True                # Enable short selling for long/short strategy
         )
-        # Add drawdown protection risk manager
         # engine.add_risk_manager(DrawdownProtection(threshold=drawdown_threshold))
         
         # 4. Run backtest (strategy will automatically compute required indicators)
@@ -130,7 +130,7 @@ def main():
         )
         
         # Save chart
-        output_file = os.path.join(output_dir, f"{ticker}_kdj_mfi_early_detection_strategy_v2.html")
+        output_file = os.path.join(output_dir, f"{ticker}_kdj_mfi_early_detection_strategy.html")
         plotter.save(output_file)
         
         # Open chart in browser

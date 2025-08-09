@@ -6,7 +6,7 @@ CLEANED VERSION: Removed BUY_SIGNAL_COUNTER logic to show all signals without li
 from typing import List, Dict, Any
 import pandas as pd
 import numpy as np
-from backtest_framework.core.strategies.base import BaseStrategy
+from backtest_framework.core.signals.base import BaseStrategy
 from backtest_framework.core.utils.helpers import clean_params, filter_empty_dicts
 
 class KDJMFIEarlyDetectionStrategy(BaseStrategy):

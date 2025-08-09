@@ -1,6 +1,6 @@
 """Core strategy modules for generating trading signals."""
-from backtest_framework.core.strategies.base import BaseStrategy
-from backtest_framework.core.strategies.kdj_cross import (
+from backtest_framework.core.signals.base import BaseStrategy
+from backtest_framework.core.signals.kdj_cross import (
     GoldenDeadCrossStrategyBase,
     GoldenDeadCrossStrategyMonthly,
     GoldenDeadCrossStrategyDaily
