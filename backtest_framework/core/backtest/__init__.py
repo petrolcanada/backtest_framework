@@ -1,21 +1,9 @@
-"""Core backtesting engine for simulating trading strategies."""
-from .engine import BacktestEngine
-from .portfolio_manager import PortfolioManager
-from .cost_calculator import CostCalculator
-from .trade_executor import TradeExecutor
-from .trade_tracker import TradeTracker
-from .performance_calculator import PerformanceCalculator
-from .data_validator import DataValidator
-from .risk_management import DrawdownProtection, TrailingStop
+"""
+Backtesting engine components - Zero maintenance required.
 
-__all__ = [
-    'BacktestEngine',
-    'PortfolioManager',
-    'CostCalculator', 
-    'TradeExecutor',
-    'TradeTracker',
-    'PerformanceCalculator',
-    'DataValidator',
-    'DrawdownProtection',
-    'TrailingStop'
-]
+Use direct imports:
+    from backtest_framework.core.backtest.engine import BacktestEngine
+    from backtest_framework.core.backtest.portfolio_manager import PortfolioManager
+    from backtest_framework.core.backtest.risk_management import DrawdownProtection, TrailingStop
+"""
+# No manual imports needed - use direct module imports instead!

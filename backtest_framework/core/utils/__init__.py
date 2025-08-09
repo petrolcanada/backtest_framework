@@ -1,15 +1,8 @@
 """
-Utility modules for the backtesting framework.
+Utility functions - Zero maintenance required.
+
+Use direct imports:
+    from backtest_framework.core.utils.helpers import Timer, suppress_warnings
+    from backtest_framework.core.utils.chart_utils import plot_strategy_vs_benchmark
 """
-
-from backtest_framework.core.utils.chart_utils import (
-    plot_strategy_vs_benchmark,
-    calculate_cum_returns,
-    calculate_performance_metrics
-)
-
-__all__ = [
-    'plot_strategy_vs_benchmark',
-    'calculate_cum_returns',
-    'calculate_performance_metrics'
-]
+# No manual imports needed - use direct module imports instead!

@@ -1,14 +1,8 @@
-"""Core strategy modules for generating trading signals."""
-from backtest_framework.core.signals.base import BaseStrategy
-from backtest_framework.core.signals.kdj_cross import (
-    GoldenDeadCrossStrategyBase,
-    GoldenDeadCrossStrategyMonthly,
-    GoldenDeadCrossStrategyDaily
-)
+"""
+Signal strategies - Zero maintenance required.
 
-__all__ = [
-    'BaseStrategy', 
-    'GoldenDeadCrossStrategyBase',
-    'GoldenDeadCrossStrategyMonthly',
-    'GoldenDeadCrossStrategyDaily'
-]
+Use direct imports:
+    from backtest_framework.core.signals.kdj_cross import GoldenDeadCrossStrategyMonthly
+    from backtest_framework.core.signals.kdj_mfi_early_detection import KDJMFIEarlyDetectionStrategy
+"""
+# No manual imports needed - use direct module imports instead!

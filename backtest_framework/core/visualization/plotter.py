@@ -6,15 +6,13 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-# Import the modular components
-from .components import (
-    TitleGenerator,
-    ChartStyler,
-    ChartElements,
-    PerformancePlots,
-    AllocationPlots,
-    DynamicIndicatorCoordinator
-)
+# Import the modular components - direct imports (zero maintenance)
+from .components.titles import TitleGenerator
+from .components.styling import ChartStyler
+from .components.chart_elements import ChartElements
+from .components.performance import PerformancePlots
+from .components.allocation import AllocationPlots
+from .components.dynamic_indicators import DynamicIndicatorCoordinator
 
 
 class Plotter:

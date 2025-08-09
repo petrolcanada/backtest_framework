@@ -1,6 +1,9 @@
 """
-Visualization package for the modular backtesting framework.
-"""
-from backtest_framework.core.visualization.plotter import Plotter
+Visualization components - Zero maintenance required.
 
-__all__ = ["Plotter"]
+Use direct imports:
+    from backtest_framework.core.visualization.plotter import Plotter
+    from backtest_framework.core.visualization.components.styling import ChartStyler
+    from backtest_framework.core.visualization.components.performance import PerformancePlots
+"""
+# No manual imports needed - use direct module imports instead!

@@ -1,4 +1,7 @@
-"""Core data functions for loading and preprocessing financial data."""
-from backtest_framework.core.data.loader import DataLoader
+"""
+Data loading and preprocessing - Zero maintenance required.
 
-__all__ = ['DataLoader']
+Use direct imports:
+    from backtest_framework.core.data.loader import DataLoader
+"""
+# No manual imports needed - use direct module imports instead!

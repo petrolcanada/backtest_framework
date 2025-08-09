@@ -1,14 +1,9 @@
 """
-Modular indicator visualization components.
+Modular indicator visualization components - Zero maintenance required.
 
-This package contains individual visualization classes for different technical indicators,
-allowing for dynamic indicator visualization based on what indicators are computed.
+Use direct imports:
+    from backtest_framework.core.visualization.components.indicator_components.base import BaseIndicatorVisualization
+    from backtest_framework.core.visualization.components.indicator_components.monthly_kdj import MonthlyKDJ
+    from backtest_framework.core.visualization.components.indicator_components.sma import SMA
 """
-from .base import BaseIndicatorVisualization
-from .monthly_kdj import MonthlyKDJ
-from .sma import SMA
-from .adx import ADX
-from .mfi import MFI
-from .rsi import RSI
-
-__all__ = ['BaseIndicatorVisualization', 'MonthlyKDJ', 'SMA', 'ADX', 'MFI', 'RSI']
+# No manual imports needed - use direct module imports instead!
