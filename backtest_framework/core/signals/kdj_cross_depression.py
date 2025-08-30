@@ -196,7 +196,8 @@ class KDJCrossDepressionStrategy(BaseStrategy):
             j_val = data[j_col].iloc[i]
             j_extreme = False if pd.isna(j_val) else j_val >= self.j_extreme_threshold
             
-            return death_cross or j_extreme
+            # return death_cross or j_extreme
+            return j_extreme
             
         except (KeyError, IndexError):
             return False

@@ -48,7 +48,7 @@ class Plotter:
         self.dynamic_indicators = DynamicIndicatorCoordinator(self.results)
     
     def create_comprehensive_chart(self, ticker: str = '', base_strategy_name: str = "Strategy", 
-                                 log_scale: bool = True) -> go.Figure:
+                                 log_scale: bool = True, sync_y_axis_cum_return: bool = True) -> go.Figure:
         """
         Create a comprehensive chart with all visualization panels.
         
@@ -56,6 +56,8 @@ class Plotter:
             ticker: Ticker symbol for chart title
             base_strategy_name: Base strategy name for dynamic title generation
             log_scale: Whether to use logarithmic scale for price charts
+            sync_y_axis_cum_return: Whether to sync y-axis for cumulative returns (default True).
+                                   Set to False when strategy and benchmark returns are on very different scales.
             
         Returns:
             Plotly Figure object with comprehensive visualization
@@ -125,7 +127,7 @@ class Plotter:
         
         # Add chart content
         self._build_price_panel(fig, row=1, log_scale=log_scale)
-        self._build_performance_panel(fig, row=2)
+        self._build_performance_panel(fig, row=2, sync_y_axis_cum_return=sync_y_axis_cum_return)
         self._build_drawdown_panel(fig, row=3)
         self._build_allocation_panel(fig, row=4)
         self._build_individual_indicators_panels(fig, indicator_panel_indicators, start_row=5)
@@ -203,6 +205,9 @@ class Plotter:
             bottom = max(0.0, min(domain[0], 0.99))
             top = max(bottom + 0.01, min(domain[1], 1.0))
             validated_domains.append([bottom, top])
+        
+        # Store domains for later access
+        self._subplot_domains = validated_domains
         
         # Apply domains to axes
         axis_updates = {}
@@ -374,9 +379,9 @@ class Plotter:
                         font=dict(size=12, color="gray")
                     )
     
-    def _build_performance_panel(self, fig: go.Figure, row: int) -> None:
+    def _build_performance_panel(self, fig: go.Figure, row: int, sync_y_axis_cum_return: bool = True) -> None:
         """Build the performance comparison panel."""
-        self.performance.add_performance_comparison(fig, row=row, col=1)
+        self.performance.add_performance_comparison(fig, row=row, col=1, sync_y_axis_cum_return=sync_y_axis_cum_return)
     
     def _build_drawdown_panel(self, fig: go.Figure, row: int) -> None:
         """Build the drawdown comparison panel."""
@@ -456,6 +461,9 @@ class Plotter:
             top_margin=40  # Slightly more margin for titles
         )
         
+        # Check if any row has dual y-axis mode
+        has_dual_yaxis = hasattr(fig, '_dual_yaxis_rows') and fig._dual_yaxis_rows
+        
         # Configure x-axes for all subplots
         start_date = self.results.index.min()
         end_date = self.results.index.max()
@@ -528,6 +536,20 @@ class Plotter:
         # Apply all configurations
         fig.update_layout(**layout_config, **axis_configs, title="")
         
+        # If we have dual y-axis rows, update their secondary axis domains
+        if has_dual_yaxis and hasattr(self, '_subplot_domains'):
+            secondary_updates = {}
+            for dual_row in fig._dual_yaxis_rows:
+                # Get the stored domain for this row (row numbering starts at 1)
+                if dual_row <= len(self._subplot_domains):
+                    primary_domain = self._subplot_domains[dual_row - 1]  # Convert to 0-based index
+                    # Apply same domain to secondary axis
+                    secondary_key = f'yaxis{dual_row + 100}'
+                    secondary_updates[secondary_key] = {'domain': primary_domain}
+            
+            if secondary_updates:
+                fig.update_layout(**secondary_updates)
+        
         # Additional update to ensure spike lines work across all subplots
         fig.update_xaxes(showspikes=True, spikemode='across', spikesnap='cursor',
                         spikedash='solid', spikethickness=2, 
@@ -538,9 +560,9 @@ class Plotter:
     
     # Convenience methods for backward compatibility
     def plot_chart_with_benchmark(self, ticker: str = '', base_strategy_name: str = "Monthly KDJ", 
-                                 log_scale: bool = True) -> go.Figure:
+                                 log_scale: bool = True, sync_y_axis_cum_return: bool = True) -> go.Figure:
         """Create comprehensive chart (delegates to create_comprehensive_chart)."""
-        return self.create_comprehensive_chart(ticker, base_strategy_name, log_scale)
+        return self.create_comprehensive_chart(ticker, base_strategy_name, log_scale, sync_y_axis_cum_return)
     
     def show(self) -> None:
         """Display the current figure."""

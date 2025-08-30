@@ -24,7 +24,7 @@ class PerformancePlots:
         self.engine = engine
         self.styler = ChartStyler()
     
-    def add_performance_comparison(self, fig: go.Figure, row: int = 1, col: int = 1) -> go.Figure:
+    def add_performance_comparison(self, fig: go.Figure, row: int = 1, col: int = 1, sync_y_axis_cum_return: bool = True) -> go.Figure:
         """
         Add strategy vs benchmark performance comparison to the specified subplot.
         
@@ -32,6 +32,8 @@ class PerformancePlots:
             fig: Plotly figure to add trace to
             row: Row index for the subplot
             col: Column index for the subplot
+            sync_y_axis_cum_return: Whether to use synced y-axis for strategy and benchmark cumulative returns (default True)
+                                   Set to False to use independent y-axes when returns are on different scales
             
         Returns:
             Updated figure
@@ -53,39 +55,118 @@ class PerformancePlots:
         # Plot date range
         date_range = self.data.index[first_signal_idx:]
         
-        # Add benchmark performance
+        # Add traces based on sync_y_axis_cum_return setting
         benchmark_name = self._get_benchmark_name()
-        fig.add_trace(
-            go.Scatter(
-                x=date_range,
-                y=benchmark_data,
-                mode='lines',
-                line=self.styler.get_line_style(color=self.styler.COLORS['benchmark']),
-                name=benchmark_name
-            ),
-            row=row, col=col
-        )
         
-        # Add strategy performance
-        fig.add_trace(
-            go.Scatter(
-                x=date_range,
-                y=strategy_data,
-                mode='lines',
-                line=self.styler.get_line_style(color=self.styler.COLORS['strategy'], width=3.0),
-                name="Strategy Return"
-            ),
-            row=row, col=col
-        )
+        if sync_y_axis_cum_return:
+            # Use single y-axis (default behavior)
+            fig.add_trace(
+                go.Scatter(
+                    x=date_range,
+                    y=benchmark_data,
+                    mode='lines',
+                    line=self.styler.get_line_style(color=self.styler.COLORS['benchmark']),
+                    name=benchmark_name
+                ),
+                row=row, col=col
+            )
+            
+            fig.add_trace(
+                go.Scatter(
+                    x=date_range,
+                    y=strategy_data,
+                    mode='lines',
+                    line=self.styler.get_line_style(color=self.styler.COLORS['strategy'], width=3.0),
+                    name="Strategy Return"
+                ),
+                row=row, col=col
+            )
+        else:
+            # Use dual y-axes for independent scales
+            # First add benchmark on the primary y-axis
+            fig.add_trace(
+                go.Scatter(
+                    x=date_range,
+                    y=benchmark_data,
+                    mode='lines',
+                    line=self.styler.get_line_style(color=self.styler.COLORS['benchmark']),
+                    name=benchmark_name
+                ),
+                row=row, col=col
+            )
+            
+            # Then add strategy on a secondary y-axis
+            # We need to add it without subplot specification and manually assign the axis
+            fig.add_trace(
+                go.Scatter(
+                    x=date_range,
+                    y=strategy_data,
+                    mode='lines',
+                    line=self.styler.get_line_style(color=self.styler.COLORS['strategy'], width=3.0),
+                    name="Strategy Return",
+                    yaxis=f'y{row + 100}'  # Reference to secondary axis we'll create
+                )
+            )
+            
+            # Now configure the axes properly
+            axis_num = row
+            
+            # Update the trace to use correct x-axis reference
+            trace_idx = len(fig.data) - 1  # Last added trace
+            fig.data[trace_idx].xaxis = f'x{axis_num}' if axis_num > 1 else 'x'
+            
+            # Create the secondary y-axis configuration
+            secondary_yaxis_key = f'yaxis{axis_num + 100}'
+            primary_yaxis_key = 'yaxis' if axis_num == 1 else f'yaxis{axis_num}'
+            
+            # Get the domain from the primary axis (it should already be set)
+            # We'll set this after the figure is fully constructed
+            layout_update = {
+                secondary_yaxis_key: dict(
+                    title="Strategy Return (%)",
+                    titlefont=dict(color=self.styler.COLORS['strategy']),
+                    tickfont=dict(color=self.styler.COLORS['strategy']),
+                    overlaying=f'y{axis_num}' if axis_num > 1 else 'y',
+                    side='left',  # Put strategy axis on the left
+                    showgrid=False,  # Don't show grid for secondary axis
+                    zeroline=True,
+                    zerolinecolor='#999999',
+                    zerolinewidth=1,
+                    anchor=f'x{axis_num}' if axis_num > 1 else 'x'  # Anchor to correct x-axis
+                )
+            }
+            
+            # Update primary y-axis to be on the right for benchmark
+            primary_update = {
+                primary_yaxis_key: dict(
+                    title="Benchmark Return (%)",
+                    titlefont=dict(color=self.styler.COLORS['benchmark']),
+                    tickfont=dict(color=self.styler.COLORS['benchmark']),
+                    side='right'  # Move benchmark to right side
+                )
+            }
+            
+            fig.update_layout(**layout_update, **primary_update)
+            
+            # Store flag to indicate dual y-axis mode for this row
+            if not hasattr(fig, '_dual_yaxis_rows'):
+                fig._dual_yaxis_rows = []
+            fig._dual_yaxis_rows.append(row)
         
         # Add horizontal reference line at 0 (starting point)
         fig.add_hline(y=0, line_width=1, line_dash="dash", line_color="#999999", row=row, col=col)
         
         # Add ending value annotations
-        self._add_ending_value_annotations(fig, row, col, {
-            'Strategy': strategy_data.iloc[-1],
-            'Benchmark': benchmark_data.iloc[-1]
-        })
+        if sync_y_axis_cum_return:
+            self._add_ending_value_annotations(fig, row, col, {
+                'Strategy': strategy_data.iloc[-1],
+                'Benchmark': benchmark_data.iloc[-1]
+            })
+        else:
+            # For dual axes, add annotations with appropriate y-axis references
+            self._add_ending_value_annotations_dual_axis(fig, row, col, 
+                                                         strategy_data.iloc[-1], 
+                                                         benchmark_data.iloc[-1])
         
         return fig
     
@@ -295,6 +376,66 @@ class PerformancePlots:
         has_engine_benchmark = 'benchmark_equity' in self.results.columns
         include_divs = hasattr(self.engine, 'include_dividends') and self.engine.include_dividends
         return "Buy & Hold Total Return Drawdown" if (has_engine_benchmark and include_divs and 'Dividends' in self.data.columns) else "Buy & Hold Drawdown"
+    
+    def _add_ending_value_annotations_dual_axis(self, fig: go.Figure, row: int, col: int, 
+                                                strategy_value: float, benchmark_value: float):
+        """
+        Add ending value annotations for dual y-axis configuration.
+        
+        Args:
+            fig: Plotly figure to add annotations to
+            row: Row index for the subplot
+            col: Column index for the subplot
+            strategy_value: Strategy ending value
+            benchmark_value: Benchmark ending value
+        """
+        # Generate correct xref for subplot
+        if row == 1:
+            xref = "x domain"
+            strategy_yref = "y102"  # Secondary axis for strategy
+            benchmark_yref = "y"    # Primary axis for benchmark
+        else:
+            xref = f"x{row} domain"
+            strategy_yref = f"y{row + 100}"  # Secondary axis
+            benchmark_yref = f"y{row}"       # Primary axis
+        
+        # Format values
+        strategy_formatted = f"{strategy_value:.1f}%" if abs(strategy_value) >= 100 else f"{strategy_value:.2f}%"
+        benchmark_formatted = f"{benchmark_value:.1f}%" if abs(benchmark_value) >= 100 else f"{benchmark_value:.2f}%"
+        
+        # Add strategy annotation (left side)
+        fig.add_annotation(
+            x=-0.002,  # Just outside the left plot area
+            y=strategy_value,
+            xref=xref,
+            yref=strategy_yref,
+            text=strategy_formatted,
+            showarrow=False,
+            font=dict(color=self.styler.COLORS['strategy'], size=10, family="Arial"),
+            bgcolor="rgba(0, 0, 0, 0.7)",
+            bordercolor=self.styler.COLORS['strategy'],
+            borderwidth=1,
+            borderpad=2,
+            xanchor="right",
+            yanchor="middle"
+        )
+        
+        # Add benchmark annotation (right side)
+        fig.add_annotation(
+            x=1.002,  # Just outside the right plot area
+            y=benchmark_value,
+            xref=xref,
+            yref=benchmark_yref,
+            text=benchmark_formatted,
+            showarrow=False,
+            font=dict(color=self.styler.COLORS['benchmark'], size=10, family="Arial"),
+            bgcolor="rgba(0, 0, 0, 0.7)",
+            bordercolor=self.styler.COLORS['benchmark'],
+            borderwidth=1,
+            borderpad=2,
+            xanchor="left",
+            yanchor="middle"
+        )
     
     def _add_ending_value_annotations(self, fig: go.Figure, row: int, col: int, values: dict):
         """

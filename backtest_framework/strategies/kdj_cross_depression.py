@@ -32,14 +32,14 @@ def main():
     timer = Timer()
     
     # Configuration
-    ticker = "AAPL"
+    ticker = "NVDA"
     initial_capital = 10000
     commission = 0.001
     slippage = 0.001                        # Add 0.1% slippage for realistic execution costs
     drawdown_threshold = 0.2
     
     try:
-        # 1. Load data with mode selection
+        # 1. Load data with mode selectioN
         data_dir = os.path.join(os.path.expanduser("~"), "local_script", 
                                "Local Technical Indicator Data", "security_data")
         loader = DataLoader(data_dir=data_dir)
@@ -53,16 +53,16 @@ def main():
         # 2. Initialize strategy with parameters
         strategy = KDJCrossDepressionStrategy(
             # Strategy parameters
-            depression_threshold=50.0,           # Depression zone threshold
+            depression_threshold=40,           # Depression zone threshold
             j_extreme_threshold=100.0,           # J extreme level for sell
             use_monthly_kdj=True,                # Use monthly vs daily KDJ
             
             # Custom indicator parameters - showing explicit overrides of defaults
-            # kdj_period=9 * 5,                      # KDJ lookback period (198 = 9 months * 22 days)
-            # kdj_signal=3 * 5,                       # KDJ signal period (66 = 3 months * 22 days)
+            kdj_period=9 * 5,                      # KDJ lookback period (198 = 9 months * 22 days)
+            kdj_signal=3 * 5,                       # KDJ signal period (66 = 3 months * 22 days)
             
-            kdj_period=9,                      # KDJ lookback period (198 = 9 months * 22 days)
-            kdj_signal=3,                       # KDJ signal period (66 = 3 months * 22 days)
+            # kdj_period=9,                      # KDJ lookback period (198 = 9 months * 22 days)
+            # kdj_signal=3,                       # KDJ signal period (66 = 3 months * 22 days)
             daily_kdj_period=9,                  # Daily KDJ period if used
             daily_kdj_signal=3,                  # Daily KDJ signal if used
         )
@@ -126,11 +126,12 @@ def main():
         # Create comprehensive chart with configurable benchmark visibility
         # Set show_benchmark=False to hide benchmark and better scale for strategy performance
         # Set show_benchmark=True (default) to show both strategy and benchmark for comparison
+        # Set sync_y_axis_cum_return=False to use independent y-axes for strategy and benchmark cumulative returns
         fig = plotter.create_comprehensive_chart(
             ticker=ticker, 
             base_strategy_name="KDJ Cross Depression", 
-            log_scale=False,
-            show_benchmark=True  # Default: ON - shows benchmark for comparison
+            log_scale=True,
+            sync_y_axis_cum_return=False  # Use independent y-axes for better scaling when returns differ significantly
         )
         
         # Save chart
