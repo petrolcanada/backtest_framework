@@ -215,13 +215,16 @@ class BacktestEngine:
             # Use Open price for execution (T+1 logic)
             execution_price = results['Open'].iloc[i] if 'Open' in results.columns else current_price
             
+            # Get current equity for enhanced tracking
+            current_equity = self.portfolio_manager.get_current_equity(current_price)
+            
             # Execute T+1 buy signals
             if results['buy_signal_t1'].iloc[i] == 1:
-                self.trade_executor.execute_buy_signal(current_price, execution_price, current_date)
+                self.trade_executor.execute_buy_signal(current_price, execution_price, current_date, current_equity)
             
             # Execute T+1 sell signals
             elif results['sell_signal_t1'].iloc[i] == 1:
-                self.trade_executor.execute_sell_signal(current_price, execution_price, current_date)
+                self.trade_executor.execute_sell_signal(current_price, execution_price, current_date, current_equity)
             
             # Check if strategy becomes active AFTER processing signals
             # This ensures costs start applying the day after first signal
@@ -240,6 +243,10 @@ class BacktestEngine:
                     'short_borrow_cost': 0.0,
                     'mmf_interest': 0.0
                 }
+            
+            # Update enhanced trade tracking (after costs are processed)
+            final_equity = self.portfolio_manager.get_current_equity(current_price)
+            self.trade_executor.update_trade_tracking(current_date, current_price, final_equity)
             
             # Update result columns
             self._update_result_row(results, i, current_date, current_price, daily_costs)
