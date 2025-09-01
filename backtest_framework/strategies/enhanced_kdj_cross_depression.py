@@ -157,43 +157,6 @@ def print_detailed_trade_analysis(trade_executor):
     else:
         print("No trades completed during the backtest period.")
     
-    # Analyze drawdown periods
-    drawdown_periods = trade_executor.get_drawdown_periods(min_duration_days=3)
-    
-    if not drawdown_periods.empty:
-        print(f"\nSIGNIFICANT DRAWDOWN PERIODS (>3 days duration):")
-        print("-" * 100)
-        
-        # Format drawdown periods
-        display_dd = drawdown_periods.copy()
-        
-        # Format currency columns
-        currency_cols = ['Peak Equity', 'Trough Equity', 'Max Drawdown']
-        for col in currency_cols:
-            if col in display_dd.columns:
-                if col == 'Max Drawdown':
-                    display_dd[col] = display_dd[col].apply(lambda x: f"{x:.4f}")
-                else:
-                    display_dd[col] = display_dd[col].apply(lambda x: f"${x:,.2f}")
-        
-        # Format percentage column
-        if 'Max Drawdown %' in display_dd.columns:
-            display_dd['Max Drawdown %'] = display_dd['Max Drawdown %'].apply(lambda x: f"{x:.2f}%")
-        
-        print(display_dd.to_string(index=False))
-    else:
-        print(f"\nNo significant drawdown periods (>3 days) detected.")
-    
-    # Equity curve summary
-    equity_curve = trade_executor.get_equity_curve()
-    if not equity_curve.empty:
-        print(f"\nEQUITY CURVE SUMMARY:")
-        print(f"Total Data Points: {len(equity_curve)}")
-        enhanced_stats = trade_executor.get_enhanced_summary()
-        if 'equity_volatility' in enhanced_stats:
-            print(f"Equity Volatility (Annualized): {enhanced_stats['equity_volatility']:.2%}")
-        if 'drawdown_periods' in enhanced_stats:
-            print(f"Number of Drawdown Periods: {enhanced_stats['drawdown_periods']}")
 
 
 def run_enhanced_backtest(ticker: str, strategy_params: dict, backtest_params: dict):
@@ -268,12 +231,17 @@ def main():
         'initial_capital': 10000,
         'commission': 0.001,                     # 0.1% commission
         'slippage': 0.001,                       # 0.1% slippage
-        'leverage': {"long": 1.0, "short": 1.0}, # 1x leverage
+        'leverage': {"long": 1.1, "short": 1.0}, # 1x leverage
         'position_sizing': 1.0,                  # Use 100% of capital per trade
         'enable_short_selling': False,           # Long-only strategy
         'period': '10y',                         # Data period
         'resample_period': 'D',                  # Daily data
         'mode': 'no_reload'                      # Use existing CSV data
+    }
+    
+    # Export options
+    export_options = {
+        'export_backtest_results': False,        # Set to True to export main results dataframe
     }
     
     try:
@@ -330,19 +298,11 @@ def main():
             trade_log.to_csv(csv_file, index=False)
             print(f"Detailed trade log saved to: {csv_file}")
         
-        # Optional: Save drawdown periods to CSV
-        drawdown_periods = trade_executor.get_drawdown_periods()
-        if not drawdown_periods.empty:
-            dd_file = os.path.join(output_dir, f"{ticker}_drawdown_periods.csv")
-            drawdown_periods.to_csv(dd_file, index=False)
-            print(f"Drawdown periods saved to: {dd_file}")
-        
-        # Optional: Save equity curve to CSV
-        equity_curve = trade_executor.get_equity_curve()
-        if not equity_curve.empty:
-            eq_file = os.path.join(output_dir, f"{ticker}_equity_curve.csv")
-            equity_curve.to_csv(eq_file)
-            print(f"Equity curve saved to: {eq_file}")
+        # Optional: Save main backtest results dataframe to CSV
+        if export_options.get('export_backtest_results', False):
+            results_file = os.path.join(output_dir, f"{ticker}_backtest_results.csv")
+            results.to_csv(results_file)
+            print(f"Backtest results dataframe saved to: {results_file}")
         
     except Exception as e:
         print(f"\nError: {str(e)}")

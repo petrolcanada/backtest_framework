@@ -89,7 +89,7 @@ class TradeExecutor:
             if current_date and self.trade_tracker.current_trade:
                 self.trade_tracker.close_trade(
                     date=current_date,
-                    price=execution_price,
+                    price=effective_price,  # FIX: Use effective_price for consistency
                     exit_proceeds=cover_cost
                 )
             
@@ -101,7 +101,8 @@ class TradeExecutor:
         # Enter long position
         if self.portfolio_manager.position <= 0:
             # Calculate position details before entering
-            current_portfolio_value = self.portfolio_manager.get_current_equity(current_price)
+            # FIX: Use effective_price instead of current_price for equity calculation
+            current_portfolio_value = self.portfolio_manager.get_current_equity(effective_price)
             position_value = current_portfolio_value * self.portfolio_manager.position_sizing * self.portfolio_manager.long_leverage
             shares = position_value / effective_price
             entry_cost = shares * effective_price
@@ -112,7 +113,7 @@ class TradeExecutor:
                 if current_date:
                     self.trade_tracker.open_trade(
                         date=current_date,
-                        price=execution_price,
+                        price=effective_price,  # FIX: Use effective_price as entry_price for MAE
                         position_size=shares,
                         trade_type='long',
                         entry_cost=entry_cost,
@@ -172,7 +173,7 @@ class TradeExecutor:
             if current_date and self.trade_tracker.current_trade:
                 self.trade_tracker.close_trade(
                     date=current_date,
-                    price=execution_price,
+                    price=effective_price,  # FIX: Use effective_price for consistency
                     exit_proceeds=exit_proceeds,
                     exit_equity=current_equity
                 )
@@ -185,7 +186,8 @@ class TradeExecutor:
         # Enter short position if enabled
         if (self.portfolio_manager.position >= 0 and self.enable_short_selling):
             # Calculate position details before entering
-            current_portfolio_value = self.portfolio_manager.get_current_equity(current_price)
+            # FIX: Use effective_price instead of current_price for equity calculation
+            current_portfolio_value = self.portfolio_manager.get_current_equity(effective_price)
             short_value = current_portfolio_value * self.portfolio_manager.position_sizing * self.portfolio_manager.short_leverage
             shares_to_short = short_value / effective_price
             
@@ -198,7 +200,7 @@ class TradeExecutor:
                 if current_date:
                     self.trade_tracker.open_trade(
                         date=current_date,
-                        price=execution_price,
+                        price=effective_price,  # FIX: Use effective_price as entry_price for MAE
                         position_size=shares_to_short,
                         trade_type='short',
                         entry_cost=entry_proceeds,  # For shorts, this represents proceeds

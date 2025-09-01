@@ -209,6 +209,20 @@ class BacktestEngine:
         # Main backtest loop
         for i in range(len(results)):
             current_date = results.index[i]
+            
+            # FIX: Distinguish between signal generation price and execution day price
+            # When buy_signal_t1[i] = 1, the signal was generated at i-1
+            # Signal price: T-1 close (when signal was generated)
+            # Execution price: T open (when trade is executed)
+            # Current price: T close (for position tracking)
+            
+            # Get the price from when signal was generated (T-1)
+            if i > 0 and (results['buy_signal_t1'].iloc[i] == 1 or results['sell_signal_t1'].iloc[i] == 1):
+                signal_generation_price = results['Close'].iloc[i-1]  # T-1 close
+            else:
+                signal_generation_price = results['Close'].iloc[i]  # Edge case for first day
+            
+            # Current day's close price (T close) for position tracking
             current_price = results['Close'].iloc[i]
             current_dividend = results['Dividends'].iloc[i] if self.include_dividends else 0.0
             
@@ -216,15 +230,19 @@ class BacktestEngine:
             execution_price = results['Open'].iloc[i] if 'Open' in results.columns else current_price
             
             # Get current equity for enhanced tracking
-            current_equity = self.portfolio_manager.get_current_equity(current_price)
+            # Use signal generation price for trades, current price for position tracking
+            if results['buy_signal_t1'].iloc[i] == 1 or results['sell_signal_t1'].iloc[i] == 1:
+                current_equity = self.portfolio_manager.get_current_equity(signal_generation_price)
+            else:
+                current_equity = self.portfolio_manager.get_current_equity(current_price)
             
             # Execute T+1 buy signals
             if results['buy_signal_t1'].iloc[i] == 1:
-                self.trade_executor.execute_buy_signal(current_price, execution_price, current_date, current_equity)
+                self.trade_executor.execute_buy_signal(signal_generation_price, execution_price, current_date, current_equity)
             
             # Execute T+1 sell signals
             elif results['sell_signal_t1'].iloc[i] == 1:
-                self.trade_executor.execute_sell_signal(current_price, execution_price, current_date, current_equity)
+                self.trade_executor.execute_sell_signal(signal_generation_price, execution_price, current_date, current_equity)
             
             # Check if strategy becomes active AFTER processing signals
             # This ensures costs start applying the day after first signal
